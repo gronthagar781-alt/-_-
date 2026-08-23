@@ -270,18 +270,14 @@ function renderRegister() {
   authMode = 'register';
   document.getElementById('auth-content').innerHTML = `
     <h2>নতুন একাউন্ট</h2>
-    <p class="auth-sub">রেজিস্টার করতে ইমেইল ও পাসওয়ার্ড দিন।</p>
+    <p class="auth-sub">আপনার ইমেইল দিন। ইমেইলে একটি লিংক পাঠানো হবে, সেখান থেকে পাসওয়ার্ড সেট করবেন।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
       <label>ইমেইল</label>
       <input type="email" id="auth-email" placeholder="your@email.com" autocomplete="email">
     </div>
-    <div class="auth-field">
-      <label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
-      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="new-password">
-    </div>
-    <button class="auth-btn auth-btn-primary" onclick="doRegister()" id="auth-submit-btn">রেজিস্টার করুন</button>
+    <button class="auth-btn auth-btn-primary" onclick="doRegister()" id="auth-submit-btn">লিংক পাঠান</button>
     <div class="auth-link" onclick="renderLogin()">ইতিমধ্যে একাউন্ট আছে? লগইন করুন</div>
   `;
 }
@@ -356,38 +352,28 @@ async function doLogin() {
 async function doRegister() {
   hideAuthError(); hideAuthInfo();
   const email = document.getElementById('auth-email')?.value.trim();
-  const password = document.getElementById('auth-password')?.value;
-  if (!email || !password) { showAuthError('ইমেইল ও পাসওয়ার্ড দিন।'); return; }
-  if (password.length < 6) { showAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
+  if (!email) { showAuthError('ইমেইল দিন।'); return; }
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    const { data, error } = await sb.auth.signUp({ email, password });
+    const { data, error } = await sb.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: 'https://gronthagar781-alt.github.io/-_-/'
+      }
+    });
     if (error) throw error;
-    if (data.user && data.session) {
-      // Email confirmation is OFF - logged in immediately
-      currentUser = data.user;
-      await onAuthSuccess(data.user);
-    } else if (data.user) {
-      // Email confirmation is ON - try to login directly anyway
-      try {
-        const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password });
-        if (!signInError && signInData.user) {
-          currentUser = signInData.user;
-          await onAuthSuccess(signInData.user);
-          return;
-        }
-      } catch(e2) {}
-      // If login failed, tell user to verify email
-      showAuthInfo('একাউন্ট তৈরি হয়েছে! আপনার ইমেইল খুলে কনফার্মেশন লিংকে ক্লিক করুন। তারপর লগইন করুন।');
-      setBtnLoading(false, 'রেজিস্টার করুন');
-      setTimeout(() => renderLogin(), 5000);
-    } else {
-      throw new Error('রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
-    }
+    setBtnLoading(false, '');
+    document.getElementById('auth-content').innerHTML = `
+      <h2>ইমেইল চেক করুন</h2>
+      <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ একটি লিংক পাঠানো হয়েছে।</p>
+      <div class="auth-info" id="auth-info">ইমেইল খুলে লিংকে ক্লিক করুন। স্প্যাম ফোল্ডারও চেক করুন।</div>
+      <button class="auth-btn auth-btn-primary" onclick="renderLogin()">ফিরে যান লগইনে</button>
+    `;
   } catch (e) {
-    setBtnLoading(false, 'রেজিস্টার করুন');
-    showAuthError(e.message || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
+    setBtnLoading(false, 'লিংক পাঠান');
+    showAuthError(e.message || 'ইমেইল পাঠাতে সমস্যা।');
   }
 }
 
@@ -520,35 +506,51 @@ async function doResetPassword(email) {
   }
 }
 
-function renderResetPasswordDirect(email) {
-  authMode = 'reset-direct';
+function renderSetPassword(email, mode) {
+  authMode = 'set-password';
   document.getElementById('auth-overlay').style.display = 'flex';
+  const title = mode === 'recovery' ? 'নতুন পাসওয়ার্ড সেট করুন' : 'পাসওয়ার্ড তৈরি করুন';
+  const subtitle = mode === 'recovery' ? 'আপনার ইমেইল ভেরিফাই হয়েছে। নতুন পাসওয়ার্ড দিন।' : 'আপনার ইমেইল ভেরিফাই হয়েছে। এখন পাসওয়ার্ড তৈরি করুন।';
   document.getElementById('auth-content').innerHTML = `
-    <h2>নতুন পাসওয়ার্ড সেট করুন</h2>
-    <p class="auth-sub">আপনার ইমেইল ভেরিফাই হয়েছে। নতুন পাসওয়ার্ড দিন।</p>
+    <h2>${title}</h2>
+    <p class="auth-sub">${subtitle}</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
-      <label>নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+      <label>ইমেইল</label>
+      <input type="email" id="auth-email" value="${esc(email)}" readonly style="background:rgba(255,255,255,0.5)">
+    </div>
+    <div class="auth-field">
+      <label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
       <input type="password" id="auth-new-password" placeholder="••••••••" autocomplete="new-password">
     </div>
-    <button class="auth-btn auth-btn-primary" onclick="doResetPasswordDirect()" id="auth-submit-btn">পাসওয়ার্ড আপডেট করুন</button>
+    <div class="auth-field">
+      <label>পাসওয়ার্ড আবার দিন</label>
+      <input type="password" id="auth-confirm-password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="auth-btn auth-btn-primary" onclick="doSetPassword()" id="auth-submit-btn">পাসওয়ার্ড সেট করুন</button>
   `;
 }
 
-async function doResetPasswordDirect() {
+async function doSetPassword() {
   hideAuthError(); hideAuthInfo();
   const newPassword = document.getElementById('auth-new-password')?.value;
+  const confirmPassword = document.getElementById('auth-confirm-password')?.value;
   if (!newPassword || newPassword.length < 6) { showAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
+  if (newPassword !== confirmPassword) { showAuthError('পাসওয়ার্ড দুটি মিলছে না।'); return; }
   setBtnLoading(true);
   try {
     const { error } = await sb.auth.updateUser({ password: newPassword });
     if (error) throw error;
-    showAuthInfo('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! লগইন করুন।');
-    setTimeout(() => { renderLogin(); }, 2000);
+    showAuthInfo('পাসওয়ার্ড সফলভাবে সেট হয়েছে! এখন লগইন করুন।');
+    setBtnLoading(false, '');
+    // Sign out so user can login with new password
+    try { await sb.auth.signOut(); } catch(e) {}
+    currentUser = null;
+    setTimeout(() => { renderLogin(); }, 3000);
   } catch (e) {
-    setBtnLoading(false, 'পাসওয়ার্ড আপডেট করুন');
-    showAuthError(e.message || 'পাসওয়ার্ড আপডেট ব্যর্থ।');
+    setBtnLoading(false, 'পাসওয়ার্ড সেট করুন');
+    showAuthError(e.message || 'পাসওয়ার্ড সেট করতে সমস্যা।');
   }
 }
 
@@ -667,17 +669,23 @@ async function checkAuthState() {
     setTimeout(() => showAuthError(decodeURIComponent(errorDesc)), 500);
     return;
   }
-  if (accessToken && (type === 'recovery' || type === 'signup')) {
-    // User clicked password reset link - set session and show reset screen
+  if (accessToken && (type === 'recovery' || type === 'signup' || type === 'magiclink')) {
+    // User clicked link in email - set session and show password set screen
     const { data, error } = await sb.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken
     });
     if (!error && data.user) {
       currentUser = data.user;
-      document.getElementById('auth-overlay').style.display = 'none';
-      // Show password reset screen
-      renderResetPasswordDirect(data.user.email);
+      // Check if user has a password set already
+      const hasPassword = data.user.user_metadata?.has_password;
+      if (type === 'recovery') {
+        // Password reset - show new password screen
+        renderSetPassword(data.user.email, 'recovery');
+      } else {
+        // Registration - show set password screen
+        renderSetPassword(data.user.email, 'signup');
+      }
       return;
     }
   }
