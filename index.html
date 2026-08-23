@@ -446,8 +446,9 @@ startQuizEngine({title:'বিষয়ভিত্তিক: '+cat,questions,an
 }
 // PYQ
 
+function caDateToISO(s){const m=s.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);if(!m)return '';const months={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};const mo=months[m[2]];if(!mo)return '';return m[3]+'-'+mo+String(m[1]).padStart(2,'0');}
 function loadCurrentAffairs(){
-const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort().reverse();
+const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort((a,b)=>(caDateToISO(b)||'').localeCompare(caDateToISO(a)||''));
 let html='<div class="card"><h2>📰 কারেন্ট অ্যাফেয়ার্স</h2><p>সাম্প্রতিক ঘটনাবলি থেকে গুরুত্বপূর্ণ তথ্য। উৎস: kolom.in</p></div>';
 html+='<div class="card"><h3>🔍 খুঁজুন</h3><input type="text" id="ca-search" placeholder="কারেন্ট অ্যাফেয়ার্স খুঁজুন..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:1rem" oninput="searchCA()"></div>';
 html+='<div class="card"><h3>📅 তারিখ নির্বাচন করুন</h3><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;max-height:200px;overflow-y:auto">';
@@ -477,7 +478,7 @@ document.getElementById('ca-content').innerHTML=html
 }
 function searchCA(){
 const q=document.getElementById('ca-search').value.toLowerCase().trim();
-if(!q){const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort().reverse();if(dates.length>0)showCADate(dates[0]);return}
+if(!q){const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort((a,b)=>(caDateToISO(b)||'').localeCompare(caDateToISO(a)||''));if(dates.length>0)showCADate(dates[0]);return}
 const results=CURRENT_AFFAIRS.filter(m=>{
 const t=(m.title||m.question||'').toLowerCase();
 const a=(m.answer||'').toLowerCase();
