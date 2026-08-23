@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>গ্রাম পঞ্চায়েত পরীক্ষা - সম্পূর্ণ প্রস্তুতি</title>
+<style>
+:root{--p1:#667eea;--p2:#764ba2;--p3:#f093fb;--a1:#4facfe;--a2:#00f2fe;--s:#00b09b;--s2:#96c93d;--w:#fa709a;--w2:#fee140;--d:#0f0c29;--d2:#302b63;--d3:#24243e;--card:rgba(255,255,255,0.95);--text:#1a1a2e;--gray:#6c7293;--border:rgba(102,126,234,0.2);--shadow:0 8px 32px rgba(0,0,0,0.12);--radius:16px}
