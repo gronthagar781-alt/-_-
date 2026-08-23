@@ -35,9 +35,9 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 90
 
-      - name: Upload APK to release
+      - name: Create release and upload APK
         uses: softprops/action-gh-release@v2
         with:
-          tag-name: app-v1.0
+          tag_name: app-v1.0
           name: পঞ্চায়েত প্রস্তুতি APK
           files: app/build/outputs/apk/debug/*.apk
