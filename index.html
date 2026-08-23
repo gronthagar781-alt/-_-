@@ -968,6 +968,7 @@ function goToQ(i){quiz.currentQ=i;renderQuiz(quiz.pageId)}
 function prevQ(){if(quiz.currentQ>0){quiz.currentQ--;renderQuiz(quiz.pageId)}}
 function nextQ(){if(quiz.currentQ<quiz.set.questions.length-1){quiz.currentQ++;renderQuiz(quiz.pageId)}}
 function submitQuiz(){
+try{
 const s=quiz.set,t=s.questions.length,a=Object.keys(quiz.answers).length;
 if(a<t&&!confirm(`আপনি ${a}টি উত্তর দিয়েছেন। বাকি ${t-a}টি বাদ থাকবে। সাবমিট করতে চান?`))return;
 let c=0,w=0,sk=0;s.questions.forEach((q,i)=>{const ua=quiz.answers[i];const ca=s.answers[q.number]||s.answers[i+1];if(!ua)sk++;else if(ua===ca)c++;else w++});
@@ -978,9 +979,9 @@ if(quiz.isMock)progress.mock_tests.push(tr);else progress.practice_done[tn]=tr;
 saveProgress(progress);addHistory(quiz.isMock?'mocktest':(quiz.type||'practice'),`${tn}: ${c}/${t} (${p}%)`,`✅${c} সঠিক, ❌${w} ভুল, ➖${sk} বাদ`);
 let rh=`<div class="card"><div class="quiz-result"><div class="score">${c}/${t}</div><div style="color:var(--gray);font-size:1.1rem">${p}%</div></div><div class="result-grid"><div class="r-box correct"><div class="num">${c}</div><div class="lbl">সঠিক ✅</div></div><div class="r-box wrong"><div class="num">${w}</div><div class="lbl">ভুল ❌</div></div><div class="r-box skipped"><div class="num">${sk}</div><div class="lbl">বাদ ➖</div></div></div><p style="margin:14px 0">সময়: ${Math.floor(tt/60)}:${(tt%60).toString().padStart(2,'0')}</p><button class="btn btn-success" onclick="backFromQuiz()">ফিরে যান</button><button class="btn btn-primary" style="margin-left:8px" onclick="reviewQuiz()">প্রশ্ন রিভিউ</button></div>`;
 document.getElementById(quiz.pageId).innerHTML=rh;
-}
+}catch(err){console.error('Submit error:',err);alert('সাবমিট করতে সমস্যা: '+err.message)}}
 function reviewQuiz(){quiz.showResults=true;quiz.currentQ=0;renderQuiz(quiz.pageId)}
-function backFromQuiz(){quiz=null;const p=quiz?.pageId;if(quiz&&quiz.pageId){const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};if(loaders[quiz.pageId])loaders[quiz.pageId]()}else{const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};const active=document.querySelector('.page.active')?.id;if(loaders[active])loaders[active]()}}
+function backFromQuiz(){const pid=quiz?quiz.pageId:null;quiz=null;if(pid){const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};if(loaders[pid])loaders[pid]()}else{const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};const active=document.querySelector('.page.active')?.id;if(loaders[active])loaders[active]()}}
 // REPORT
 function loadReport(){
 let sh='<table class="report-table"><tr><th>বিষয়</th><th>অধ্যায়</th><th>সম্পন্ন</th><th>%</th></tr>';
