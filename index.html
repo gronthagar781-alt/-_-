@@ -368,7 +368,7 @@ async function doRegister() {
     document.getElementById('auth-content').innerHTML = `
       <h2>ইমেইল চেক করুন</h2>
       <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ একটি লিংক পাঠানো হয়েছে।</p>
-      <div class="auth-info" id="auth-info">ইমেইল খুলে লিংকে ক্লিক করুন। স্প্যাম ফোল্ডারও চেক করুন।</div>
+      <div class="auth-info" id="auth-info">📧 ইমেইল খুলে লিংকে ক্লিক করুন।<br><br>⚠️ ইমেইল না পেলে <strong>Spam</strong> বা <strong>Junk</strong> ফোল্ডারে চেক করুন।</div>
       <button class="auth-btn auth-btn-primary" onclick="renderLogin()">ফিরে যান লগইনে</button>
     `;
   } catch (e) {
@@ -430,7 +430,7 @@ async function doForgotSendOTP() {
     document.getElementById('auth-content').innerHTML = `
       <h2>ইমেইল চেক করুন</h2>
       <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। ইমেইল খুলে লিংকে ক্লিক করুন।</p>
-      <div class="auth-info" id="auth-info">ইমেইল না পেলে Spam ফোল্ডার চেক করুন।</div>
+      <div class="auth-info" id="auth-info">📧 ইমেইল খুলে লিংকে ক্লিক করুন।<br><br>⚠️ ইমেইল না পেলে <strong>Spam</strong> বা <strong>Junk</strong> ফোল্ডারে চেক করুন।</div>
       <button class="auth-btn auth-btn-primary" onclick="renderLogin()">ফিরে যান লগইনে</button>
     `;
   } catch (e) {
