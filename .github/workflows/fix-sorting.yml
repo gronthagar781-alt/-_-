@@ -1,4 +1,4 @@
-name: Apply UI Fixes
+name: Apply UI Fixes v2
 on:
   workflow_dispatch:
 permissions:
@@ -10,8 +10,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply all patches
-        run: python3 apply_all_patches.py
+      - name: Apply patches
+        run: python3 apply_patch2.py
       - name: Commit and push
         run: |
           git config user.name "GitHub Actions Bot"
@@ -20,6 +20,6 @@ jobs:
           if git diff --quiet --cached; then
             echo "No changes to commit"
           else
-            git commit -m "feat: app icon, date button styling, copyright @Champ"
+            git commit -m "fix: date button highlight sync + remove source text"
             git push
           fi
