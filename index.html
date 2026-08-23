@@ -374,14 +374,23 @@ async function doRegister() {
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) throw error;
     if (data.user && data.session) {
-      // Email confirmation is OFF - user is logged in immediately
+      // Email confirmation is OFF - logged in immediately
       currentUser = data.user;
       await onAuthSuccess(data.user);
     } else if (data.user) {
-      // Email confirmation is ON - show info to user
-      showAuthInfo('একাউন্ট তৈরি হয়েছে! অনুগ্রহ করে আপনার ইমেইল চেক করুন এবং লিংকে ক্লিক করে ভেরিফাই করুন। এরপর লগইন করুন।');
+      // Email confirmation is ON - try to login directly anyway
+      try {
+        const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password });
+        if (!signInError && signInData.user) {
+          currentUser = signInData.user;
+          await onAuthSuccess(signInData.user);
+          return;
+        }
+      } catch(e2) {}
+      // If login failed, tell user to verify email
+      showAuthInfo('একাউন্ট তৈরি হয়েছে! আপনার ইমেইল খুলে কনফার্মেশন লিংকে ক্লিক করুন। তারপর লগইন করুন।');
       setBtnLoading(false, 'রেজিস্টার করুন');
-      setTimeout(() => renderLogin(), 4000);
+      setTimeout(() => renderLogin(), 5000);
     } else {
       throw new Error('রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
     }
