@@ -767,9 +767,22 @@ const NAV_ITEMS=[
 {id:'report',label:'📊 রিপোর্ট'}
 ];
 function loadProgress(){try{const d=localStorage.getItem(STORAGE_KEY);if(d)return JSON.parse(d)}catch(e){}return{chapters_read:{},practice_done:{},mock_tests:[],day_targets:{},quiz_done:{},start_date:new Date().toISOString().split('T')[0]}}
-function saveProgress(d){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));debouncedCloudSync('progress',d)}catch(e){console.error(e)}}
+function saveProgress(d){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d))}catch(e){console.error(e)}
+  if(sb&&currentUser){
+    saveCloudDataForUser(currentUser.id,'progress',d).then(function(){
+      showSyncBadge('✓ সেভ হয়েছে',false);
+      setTimeout(function(){var b=document.getElementById('auth-sync-badge');if(b)b.classList.remove('show')},2000);
+    }).catch(function(e){console.error('Cloud save error:',e)});
+  }
+}
 function loadHistory(){try{const d=localStorage.getItem(HISTORY_KEY);if(d)return JSON.parse(d)}catch(e){}return[]}
-function saveHistory(d){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(d));debouncedCloudSync('history',d)}catch(e){}}
+function saveHistory(d){
+  try{localStorage.setItem(HISTORY_KEY,JSON.stringify(d))}catch(e){}
+  if(sb&&currentUser){
+    saveCloudDataForUser(currentUser.id,'history',d).catch(function(e){console.error('Cloud save error:',e)});
+  }
+}
 let progress=loadProgress();let history=loadHistory();
 // Build nav
 function buildNav(){const nav=document.getElementById('nav');nav.innerHTML='';NAV_ITEMS.forEach(item=>{const b=document.createElement('button');b.className='nav-btn';b.textContent=item.label;b.dataset.page=item.id;b.onclick=function(){showPage(item.id)};nav.appendChild(b)})}
@@ -865,7 +878,7 @@ const v=STUDY_DATA[vi],c=v.chapters[ci];const k=v.volume+'|'+c.title;const done=
 let html=`<button class="btn btn-back" onclick="renderStudySubjects()">← ফিরে যান</button><button class="btn btn-read" onclick="markRead(${vi},${ci})" style="margin-left:8px">${done?'✅ সম্পন্ন':'✓ সম্পন্ন করুন'}</button><div class="card" style="margin-top:12px"><h2>${esc(c.title)}</h2><p style="color:var(--gray);margin-bottom:12px">${esc(v.subject)}</p><div class="study-content">${esc(c.content)}</div></div>`;
 document.getElementById('study').innerHTML=html;
 }
-function markRead(vi,ci){const v=STUDY_DATA[vi],c=v.chapters[ci],k=v.volume+'|'+c.title;progress.chapters_read[k]=!progress.chapters_read[k];saveProgress(progress);if(progress.chapters_read[k])addHistory('study',`${v.subject} - ${c.title}`,'সম্পন্ন');renderStudySubjects()}
+function markRead(vi,ci){const v=STUDY_DATA[vi],c=v.chapters[ci],k=v.volume+'|'+c.title;progress.chapters_read[k]=!progress.chapters_read[k];saveProgress(progress);if(progress.chapters_read[k]){addHistory('study',`${v.subject} - ${c.title}`,'সম্পন্ন');showConfetti()}renderStudySubjects()}
 function filterChapters(){const q=(document.querySelector('.search-box')?.value||'').toLowerCase();document.querySelectorAll('.subject-card').forEach((card,vi)=>{const v=STUDY_DATA[vi];if(!v)return;const m=v.chapters.some(c=>c.title.toLowerCase().includes(q));card.style.display=m||!q?'':'none'})}
 // PLAN - 180 days
 function loadPlan(){
@@ -1249,6 +1262,9 @@ document.getElementById('report').innerHTML=html;
 function exportData(){const d={progress,history,exportDate:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='panchayat_backup_'+new Date().toISOString().split('T')[0]+'.json';a.click();URL.revokeObjectURL(u)}
 function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);if(d.progress){Object.keys(d.progress.chapters_read||{}).forEach(k=>{if(!progress.chapters_read[k])progress.chapters_read[k]=d.progress.chapters_read[k]});Object.keys(d.progress.practice_done||{}).forEach(k=>{if(!progress.practice_done[k])progress.practice_done[k]=d.progress.practice_done[k]});if(d.progress.mock_tests)progress.mock_tests=[...(progress.mock_tests||[]),...d.progress.mock_tests];Object.keys(d.progress.day_targets||{}).forEach(k=>{if(!progress.day_targets[k])progress.day_targets[k]=d.progress.day_targets[k]});saveProgress(progress)}if(d.history){history=[...history,...d.history];saveHistory(history)}alert('ব্যাকআপ সফলভাবে রিস্টোর করা হয়েছে!');loadReport()}catch(err){alert('ত্রুটি: '+err.message)}};r.readAsText(f)}
 // INIT
+window.addEventListener('beforeunload',function(){
+  if(syncTimer){clearTimeout(syncTimer);syncTimer=null}
+});
 checkAuthState();
 </script>
 <div style='text-align:center;padding:12px;color:rgba(255,255,255,0.5);font-size:.8rem'>\n&copy; 2026 পঞ্চায়েত প্রস্তুতি | সর্বস্বত্ব সংরক্ষিত<br>\nDeveloped by @Champ\n</div>\n</body></html>
