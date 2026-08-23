@@ -1,0 +1,25 @@
+name: Fix Current Affairs Sorting
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch to index.html
+        run: python3 apply_patch.py
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          if git diff --quiet --cached; then
+            echo "No changes to commit"
+          else
+            git commit -m "fix: current affairs date sorting (chronological instead of string sort)"
+            git push
+          fi
