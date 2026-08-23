@@ -558,6 +558,8 @@ async function doLogout() {
   if (sb) {
     try { await sb.auth.signOut(); } catch(e) {}
   }
+  // Flush any pending sync to the current user's cloud record BEFORE clearing
+  await flushPendingSync();
   currentUser = null;
   // Clear local data
   progress = loadProgress();
@@ -574,6 +576,8 @@ async function doLogout() {
 // ===== AUTH SUCCESS + CLOUD SYNC =====
 async function onAuthSuccess(user) {
   currentUser = user;
+  // Flush any pending sync from the PREVIOUS user to their own cloud record
+  await flushPendingSync();
   // Clear local data from previous user
   progress = loadProgress();
   history = [];
@@ -637,11 +641,13 @@ async function loadCloudData() {
   }
 }
 
-async function saveCloudData(key, value) {
-  if (!sb || !currentUser) return;
+let pendingSave = null; // {key, value, userId} - captured at schedule time
+
+async function saveCloudDataForUser(userId, key, value) {
+  if (!sb || !userId) return;
   try {
     const { error } = await sb.from('user_data').upsert({
-      user_id: currentUser.id,
+      user_id: userId,
       data_key: key,
       data_value: JSON.stringify(value),
       updated_at: new Date().toISOString()
@@ -652,12 +658,34 @@ async function saveCloudData(key, value) {
   }
 }
 
+async function saveCloudData(key, value) {
+  if (!sb || !currentUser) return;
+  await saveCloudDataForUser(currentUser.id, key, value);
+}
+
+// Flush any pending sync to the ORIGINAL user's cloud record (even if user switched)
+async function flushPendingSync() {
+  if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+  if (pendingSave) {
+    const ps = pendingSave;
+    pendingSave = null;
+    await saveCloudDataForUser(ps.userId, ps.key, ps.value);
+  }
+}
+
 // Debounced cloud sync
 function debouncedCloudSync(key, value) {
   if (!sb || !currentUser) return;
+  const userId = currentUser.id;
+  pendingSave = { key, value, userId };
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
-    saveCloudData(key, value);
+    syncTimer = null;
+    const ps = pendingSave;
+    pendingSave = null;
+    // Abort if user switched since the sync was scheduled
+    if (!currentUser || currentUser.id !== userId) return;
+    saveCloudData(ps.key, ps.value);
     showSyncBadge('✓ সেভ হয়েছে', false);
     setTimeout(() => {
       const b = document.getElementById('auth-sync-badge');
@@ -889,7 +917,7 @@ progress.chapters_read[vi+'|'+c.title]=true;
 progress.day_targets['day_'+dayNum]=true;
 saveProgress(progress);
 addHistory('plan','দিন '+dayNum+' সম্পন্ন: '+c.title,'✅');
-alert('দিন '+dayNum+' সম্পন্ন! পরের দিন আনলক হয়েছে।');
+showConfetti();
 showPage('plan');
 }
 
@@ -1109,6 +1137,7 @@ quiz.showResults=true;quiz.currentQ=0;
 const tn=s.title;const tr={name:tn,date:new Date().toISOString(),total:t,correct:c,wrong:w,skipped:sk,percentage:p,time:tt,isMock:quiz.isMock};
 if(quiz.isMock)progress.mock_tests.push(tr);else progress.practice_done[tn]=tr;
 saveProgress(progress);addHistory(quiz.isMock?'mocktest':(quiz.type||'practice'),`${tn}: ${c}/${t} (${p}%)`,`✅${c} সঠিক, ❌${w} ভুল, ➖${sk} বাদ`);
+if(p>=80)showConfetti();
 let rh=`<div class="card"><div class="quiz-result"><div class="score">${c}/${t}</div><div style="color:var(--gray);font-size:1.1rem">${p}%</div></div><div class="result-grid"><div class="r-box correct"><div class="num">${c}</div><div class="lbl">সঠিক ✅</div></div><div class="r-box wrong"><div class="num">${w}</div><div class="lbl">ভুল ❌</div></div><div class="r-box skipped"><div class="num">${sk}</div><div class="lbl">বাদ ➖</div></div></div><p style="margin:14px 0">সময়: ${Math.floor(tt/60)}:${(tt%60).toString().padStart(2,'0')}</p><button class="btn btn-success" onclick="backFromQuiz()">ফিরে যান</button><button class="btn btn-primary" style="margin-left:8px" onclick="reviewQuiz()">প্রশ্ন রিভিউ</button></div>`;
 document.getElementById(quiz.pageId).innerHTML=rh;
 }catch(err){console.error('Submit error:',err);alert('সাবমিট করতে সমস্যা: '+err.message)}}
