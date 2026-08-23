@@ -555,11 +555,10 @@ async function doSetPassword() {
 }
 
 async function doLogout() {
+  await flushPendingSync();
   if (sb) {
     try { await sb.auth.signOut(); } catch(e) {}
   }
-  // Flush any pending sync to the current user's cloud record BEFORE clearing
-  await flushPendingSync();
   currentUser = null;
   // Clear local data
   progress = loadProgress();
@@ -576,8 +575,9 @@ async function doLogout() {
 // ===== AUTH SUCCESS + CLOUD SYNC =====
 async function onAuthSuccess(user) {
   currentUser = user;
-  // Flush any pending sync from the PREVIOUS user to their own cloud record
-  await flushPendingSync();
+  // Discard any stray pendingSave from previous session (session is gone, can't write)
+  if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+  pendingSave = null;
   // Clear local data from previous user
   progress = loadProgress();
   history = [];
@@ -1127,6 +1127,91 @@ function selectAns(qi,L){if(quiz.showResults)return;quiz.answers[qi]=L;renderQui
 function goToQ(i){quiz.currentQ=i;renderQuiz(quiz.pageId)}
 function prevQ(){if(quiz.currentQ>0){quiz.currentQ--;renderQuiz(quiz.pageId)}}
 function nextQ(){if(quiz.currentQ<quiz.set.questions.length-1){quiz.currentQ++;renderQuiz(quiz.pageId)}}
+
+// ===== CONFETTI / VICTORY ANIMATION =====
+let confettiCanvas=null,confettiCtx=null,confettiParticles=[],confettiRAF=null,confettiStart=0;
+const CONFETTI_COLORS=['#667eea','#764ba2','#f093fb','#4facfe','#00f2fe','#00b09b','#96c93d','#fa709a','#fee140','#ffd700','#ff6b6b'];
+function showConfetti(){
+  if(confettiRAF){cancelAnimationFrame(confettiRAF);confettiRAF=null}
+  if(!confettiCanvas){
+    confettiCanvas=document.createElement('canvas');
+    confettiCanvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999';
+    document.body.appendChild(confettiCanvas);
+    confettiCtx=confettiCanvas.getContext('2d');
+  }
+  const dpr=window.devicePixelRatio||1;
+  confettiCanvas.width=window.innerWidth*dpr;
+  confettiCanvas.height=window.innerHeight*dpr;
+  confettiCtx.setTransform(1,0,0,1,0,0);
+  confettiCtx.scale(dpr,dpr);
+  confettiCanvas.style.display='block';
+  confettiParticles=[];
+  const W=window.innerWidth,H=window.innerHeight;
+  const count=Math.min(100,Math.floor(W/6));
+  for(let i=0;i<count;i++){
+    confettiParticles.push({
+      x:Math.random()*W,
+      y:-20-Math.random()*H*0.2,
+      vx:(Math.random()-0.5)*5,
+      vy:3+Math.random()*5,
+      size:6+Math.random()*8,
+      color:CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)],
+      rot:Math.random()*Math.PI*2,
+      vr:(Math.random()-0.5)*0.3,
+      shape:Math.random()<0.5?'rect':'circle',
+      life:1
+    });
+  }
+  confettiStart=Date.now();
+  animateConfetti();
+}
+function animateConfetti(){
+  if(!confettiCtx)return;
+  const W=window.innerWidth,H=window.innerHeight;
+  confettiCtx.clearRect(0,0,W,H);
+  const elapsed=Date.now()-confettiStart;
+  let alive=0;
+  confettiParticles.forEach(p=>{
+    if(elapsed>500)p.life-=0.04;
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vy+=0.08;
+    p.rot+=p.vr;
+    if(p.y>H+30)p.y=-20;
+    if(p.life>0){
+      alive++;
+      confettiCtx.save();
+      confettiCtx.translate(p.x,p.y);
+      confettiCtx.rotate(p.rot);
+      confettiCtx.globalAlpha=Math.max(0,p.life);
+      confettiCtx.fillStyle=p.color;
+      if(p.shape==='rect'){
+        confettiCtx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      }else{
+        confettiCtx.beginPath();
+        confettiCtx.arc(0,0,p.size/2,0,Math.PI*2);
+        confettiCtx.fill();
+      }
+      confettiCtx.restore();
+    }
+  });
+  if(alive>0){
+    confettiRAF=requestAnimationFrame(animateConfetti);
+  }else{
+    confettiCanvas.style.display='none';
+    confettiRAF=null;
+  }
+}
+window.addEventListener('resize',function(){
+  if(confettiCanvas&&confettiCanvas.style.display!=='none'){
+    const dpr=window.devicePixelRatio||1;
+    confettiCanvas.width=window.innerWidth*dpr;
+    confettiCanvas.height=window.innerHeight*dpr;
+    confettiCtx.setTransform(1,0,0,1,0,0);
+    confettiCtx.scale(dpr,dpr);
+  }
+});
+
 function submitQuiz(){
 try{
 const s=quiz.set,t=s.questions.length,a=Object.keys(quiz.answers).length;
