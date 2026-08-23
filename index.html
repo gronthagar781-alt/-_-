@@ -295,7 +295,7 @@ function renderRegisterOTP(email) {
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
       <label>OTP কোড</label>
-      <input type="text" id="auth-otp" class="auth-otp-input" maxlength="6" placeholder="000000" inputmode="numeric">
+      <input type="text" id="auth-otp" class="auth-otp-input" maxlength="8" placeholder="000000" inputmode="numeric">
     </div>
     <button class="auth-btn auth-btn-primary" onclick="verifyRegisterOTP('${email}')" id="auth-submit-btn">ভেরিফাই করুন</button>
     <div class="auth-link" onclick="renderRegister()">ফিরে যান</div>
@@ -329,7 +329,7 @@ function renderForgotOTP(email) {
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
       <label>OTP কোড</label>
-      <input type="text" id="auth-otp" class="auth-otp-input" maxlength="6" placeholder="000000" inputmode="numeric">
+      <input type="text" id="auth-otp" class="auth-otp-input" maxlength="8" placeholder="000000" inputmode="numeric">
     </div>
     <div class="auth-field">
       <label>নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
@@ -381,14 +381,12 @@ async function doRegister() {
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    // Sign up - Supabase will send a confirmation OTP email
-    const { data, error } = await sb.auth.signUp({
+    sessionStorage.setItem('reg_password', password);
+    const { data, error } = await sb.auth.signInWithOtp({
       email,
-      password,
-      options: { emailRedirectTo: window.location.origin }
+      options: { shouldCreateUser: true }
     });
     if (error) throw error;
-    // Show OTP verification screen
     setBtnLoading(false, '');
     renderRegisterOTP(email);
   } catch (e) {
@@ -400,13 +398,18 @@ async function doRegister() {
 async function verifyRegisterOTP(email) {
   hideAuthError(); hideAuthInfo();
   const token = document.getElementById('auth-otp')?.value.trim();
-  if (!token || token.length !== 6) { showAuthError('৬-সংখ্যার OTP কোড দিন।'); return; }
+  if (!token || token.length < 6) { showAuthError('OTP কোড দিন।'); return; }
   setBtnLoading(true);
   try {
     // Verify the OTP token
     const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw error;
     currentUser = data.user;
+    const savedPassword = sessionStorage.getItem('reg_password');
+    if (savedPassword) {
+      try { await sb.auth.updateUser({ password: savedPassword }); } catch(e) {}
+      sessionStorage.removeItem('reg_password');
+    }
     await onAuthSuccess(data.user);
   } catch (e) {
     setBtnLoading(false, 'ভেরিফাই করুন');
@@ -435,8 +438,9 @@ async function doForgot() {
   setBtnLoading(true);
   try {
     // Send recovery OTP
-    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+    const { data, error } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }
     });
     if (error) throw error;
     setBtnLoading(false, '');
@@ -451,12 +455,12 @@ async function doResetPassword(email) {
   hideAuthError(); hideAuthInfo();
   const token = document.getElementById('auth-otp')?.value.trim();
   const newPassword = document.getElementById('auth-new-password')?.value;
-  if (!token || token.length !== 6) { showAuthError('৬-সংখ্যার OTP কোড দিন।'); return; }
+  if (!token || token.length < 6) { showAuthError('OTP কোড দিন।'); return; }
   if (!newPassword || newPassword.length < 6) { showAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
   setBtnLoading(true);
   try {
     // Verify the recovery OTP
-    const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'recovery' });
+    const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw error;
     // Update password
     const { error: updateError } = await sb.auth.updateUser({ password: newPassword });
