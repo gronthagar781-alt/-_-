@@ -381,10 +381,10 @@ async function doRegister() {
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    sessionStorage.setItem('reg_password', password);
-    const { data, error } = await sb.auth.signInWithOtp({
+    const { data, error } = await sb.auth.signUp({
       email,
-      options: { shouldCreateUser: true }
+      password,
+      options: { emailRedirectTo: window.location.origin }
     });
     if (error) throw error;
     setBtnLoading(false, '');
@@ -405,11 +405,6 @@ async function verifyRegisterOTP(email) {
     const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw error;
     currentUser = data.user;
-    const savedPassword = sessionStorage.getItem('reg_password');
-    if (savedPassword) {
-      try { await sb.auth.updateUser({ password: savedPassword }); } catch(e) {}
-      sessionStorage.removeItem('reg_password');
-    }
     await onAuthSuccess(data.user);
   } catch (e) {
     setBtnLoading(false, 'ভেরিফাই করুন');
@@ -438,9 +433,8 @@ async function doForgot() {
   setBtnLoading(true);
   try {
     // Send recovery OTP
-    const { data, error } = await sb.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false }
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
     });
     if (error) throw error;
     setBtnLoading(false, '');
