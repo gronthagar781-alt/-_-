@@ -381,10 +381,13 @@ async function doRegister() {
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    const { data, error } = await sb.auth.signUp({
+    // Use signInWithOtp to send OTP code email
+    // Store password to set after verification
+    sessionStorage.setItem('reg_email', email);
+    sessionStorage.setItem('reg_password', password);
+    const { data, error } = await sb.auth.signInWithOtp({
       email,
-      password,
-      options: { emailRedirectTo: window.location.origin }
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin }
     });
     if (error) throw error;
     setBtnLoading(false, '');
@@ -401,10 +404,16 @@ async function verifyRegisterOTP(email) {
   if (!token || token.length < 6) { showAuthError('OTP কোড দিন।'); return; }
   setBtnLoading(true);
   try {
-    // Verify the OTP token
     const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw error;
     currentUser = data.user;
+    // Set the password the user chose during registration
+    const savedPassword = sessionStorage.getItem('reg_password');
+    if (savedPassword) {
+      try { await sb.auth.updateUser({ password: savedPassword }); } catch(e) { console.error('Password set error:', e); }
+      sessionStorage.removeItem('reg_password');
+      sessionStorage.removeItem('reg_email');
+    }
     await onAuthSuccess(data.user);
   } catch (e) {
     setBtnLoading(false, 'ভেরিফাই করুন');
@@ -433,8 +442,9 @@ async function doForgot() {
   setBtnLoading(true);
   try {
     // Send recovery OTP
-    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+    const { data, error } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }
     });
     if (error) throw error;
     setBtnLoading(false, '');
@@ -461,6 +471,38 @@ async function doResetPassword(email) {
     if (updateError) throw updateError;
     showAuthInfo('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! এখন লগইন করুন।');
     setTimeout(() => renderLogin(), 2000);
+  } catch (e) {
+    setBtnLoading(false, 'পাসওয়ার্ড আপডেট করুন');
+    showAuthError(e.message || 'পাসওয়ার্ড আপডেট ব্যর্থ।');
+  }
+}
+
+function renderResetPasswordDirect(email) {
+  authMode = 'reset-direct';
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('auth-content').innerHTML = `
+    <h2>নতুন পাসওয়ার্ড সেট করুন</h2>
+    <p class="auth-sub">আপনার ইমেইল ভেরিফাই হয়েছে। নতুন পাসওয়ার্ড দিন।</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-info" id="auth-info"></div>
+    <div class="auth-field">
+      <label>নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+      <input type="password" id="auth-new-password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="auth-btn auth-btn-primary" onclick="doResetPasswordDirect()" id="auth-submit-btn">পাসওয়ার্ড আপডেট করুন</button>
+  `;
+}
+
+async function doResetPasswordDirect() {
+  hideAuthError(); hideAuthInfo();
+  const newPassword = document.getElementById('auth-new-password')?.value;
+  if (!newPassword || newPassword.length < 6) { showAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
+  setBtnLoading(true);
+  try {
+    const { error } = await sb.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    showAuthInfo('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! লগইন করুন।');
+    setTimeout(() => { renderLogin(); }, 2000);
   } catch (e) {
     setBtnLoading(false, 'পাসওয়ার্ড আপডেট করুন');
     showAuthError(e.message || 'পাসওয়ার্ড আপডেট ব্যর্থ।');
@@ -565,6 +607,25 @@ async function checkAuthState() {
     // Supabase not configured - show login screen
     renderLogin();
     return;
+  }
+  // Check for recovery redirect (user clicked link in email)
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+  const type = hashParams.get('type');
+  if (accessToken && type === 'recovery') {
+    // User clicked password reset link - set session and show reset screen
+    const { data, error } = await sb.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    if (!error && data.user) {
+      currentUser = data.user;
+      document.getElementById('auth-overlay').style.display = 'none';
+      // Show password reset screen
+      renderResetPasswordDirect(data.user.email);
+      return;
+    }
   }
   // Check existing session
   const { data: { session } } = await sb.auth.getSession();
