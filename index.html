@@ -308,14 +308,18 @@ function renderForgot() {
   authMode = 'forgot';
   document.getElementById('auth-content').innerHTML = `
     <h2>পাসওয়ার্ড রিকভারি</h2>
-    <p class="auth-sub">আপনার ইমেইল দিন। পাসওয়ার্ড রিসেট লিংক ইমেইলে পাঠানো হবে।</p>
+    <p class="auth-sub">আপনার ইমেইল ও নতুন পাসওয়ার্ড দিন।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
       <label>ইমেইল</label>
       <input type="email" id="auth-email" placeholder="your@email.com" autocomplete="email">
     </div>
-    <button class="auth-btn auth-btn-primary" onclick="doForgot()" id="auth-submit-btn">লিংক পাঠান</button>
+    <div class="auth-field">
+      <label>নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+      <input type="password" id="auth-new-password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="auth-btn auth-btn-primary" onclick="doForgotReset()" id="auth-submit-btn">পাসওয়ার্ড রিসেট করুন</button>
     <div class="auth-link" onclick="renderLogin()">ফিরে যান লগইনে</div>
   `;
 }
@@ -436,23 +440,26 @@ async function resendOTP(email) {
   setBtnLoading(false, '');
 }
 
-async function doForgot() {
+async function doForgotReset() {
   hideAuthError(); hideAuthInfo();
   const email = document.getElementById('auth-email')?.value.trim();
+  const newPassword = document.getElementById('auth-new-password')?.value;
   if (!email) { showAuthError('ইমেইল দিন।'); return; }
+  if (!newPassword || newPassword.length < 6) { showAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    // Send recovery OTP
-    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+    const { data, error } = await sb.rpc('reset_user_password', {
+      user_email: email,
+      new_pass: newPassword
     });
     if (error) throw error;
-    setBtnLoading(false, '');
-    renderForgotOTP(email);
+    showAuthInfo('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! এখন লগইন করুন।');
+    setBtnLoading(false, 'পাসওয়ার্ড রিসেট করুন');
+    setTimeout(() => renderLogin(), 3000);
   } catch (e) {
-    setBtnLoading(false, 'লিংক পাঠান');
-    showAuthError(e.message || 'OTP পাঠাতে সমস্যা।');
+    setBtnLoading(false, 'পাসওয়ার্ড রিসেট করুন');
+    showAuthError(e.message || 'পাসওয়ার্ড রিসেট ব্যর্থ।');
   }
 }
 
