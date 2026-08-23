@@ -270,7 +270,7 @@ function renderRegister() {
   authMode = 'register';
   document.getElementById('auth-content').innerHTML = `
     <h2>নতুন একাউন্ট</h2>
-    <p class="auth-sub">রেজিস্টার করতে ইমেইল ও পাসওয়ার্ড দিন। ইমেইলে OTP পাঠানো হবে।</p>
+    <p class="auth-sub">রেজিস্টার করতে ইমেইল ও পাসওয়ার্ড দিন।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
@@ -290,7 +290,7 @@ function renderRegisterOTP(email) {
   authMode = 'register-otp';
   document.getElementById('auth-content').innerHTML = `
     <h2>OTP ভেরিফিকেশন</h2>
-    <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ একটি ৬-সংখ্যার OTP পাঠানো হয়েছে। অনুগ্রহ করে ইমেইল চেক করুন।</p>
+    <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ একটি ৬-সংখ্যার লিংক পাঠানো হয়েছে। অনুগ্রহ করে ইমেইল চেক করুন।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
@@ -308,37 +308,27 @@ function renderForgot() {
   authMode = 'forgot';
   document.getElementById('auth-content').innerHTML = `
     <h2>পাসওয়ার্ড রিকভারি</h2>
-    <p class="auth-sub">আপনার ইমেইল দিন। OTP পাঠানো হবে নতুন পাসওয়ার্ড সেট করার জন্য।</p>
+    <p class="auth-sub">আপনার ইমেইল দিন। পাসওয়ার্ড রিসেট লিংক ইমেইলে পাঠানো হবে।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
     <div class="auth-field">
       <label>ইমেইল</label>
       <input type="email" id="auth-email" placeholder="your@email.com" autocomplete="email">
     </div>
-    <button class="auth-btn auth-btn-primary" onclick="doForgot()" id="auth-submit-btn">OTP পাঠান</button>
+    <button class="auth-btn auth-btn-primary" onclick="doForgot()" id="auth-submit-btn">লিংক পাঠান</button>
     <div class="auth-link" onclick="renderLogin()">ফিরে যান লগইনে</div>
   `;
 }
 
 function renderForgotOTP(email) {
-  authMode = 'forgot-otp';
+  authMode = 'forgot-link';
   document.getElementById('auth-content').innerHTML = `
-    <h2>নতুন পাসওয়ার্ড সেট করুন</h2>
-    <p class="auth-sub">ইমেইল <strong>${esc(email)}</strong> এ পাঠানো OTP দিন এবং নতুন পাসওয়ার্ড সেট করুন।</p>
+    <h2>ইমেইল চেক করুন</h2>
+    <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। ইমেইল খুলে লিংকে ক্লিক করুন।</p>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-info" id="auth-info"></div>
-    <div class="auth-field">
-      <label>OTP কোড</label>
-      <input type="text" id="auth-otp" class="auth-otp-input" maxlength="8" placeholder="000000" inputmode="numeric">
-    </div>
-    <div class="auth-field">
-      <label>নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
-      <input type="password" id="auth-new-password" placeholder="••••••••" autocomplete="new-password">
-    </div>
-    <button class="auth-btn auth-btn-primary" onclick="doResetPassword('${email}')" id="auth-submit-btn">পাসওয়ার্ড আপডেট করুন</button>
-    <div class="auth-link" onclick="resendOTP('${email}')" style="margin-top:4px">OTP পুনরায় পাঠান</div>
+    <button class="auth-btn auth-btn-primary" onclick="renderLogin()">ফিরে যান লগইনে</button>
   `;
-  document.getElementById('auth-otp')?.focus();
 }
 
 function setBtnLoading(loading, text) {
@@ -381,17 +371,20 @@ async function doRegister() {
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    // Use signInWithOtp to send OTP code email
-    // Store password to set after verification
-    sessionStorage.setItem('reg_email', email);
-    sessionStorage.setItem('reg_password', password);
-    const { data, error } = await sb.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin }
-    });
+    const { data, error } = await sb.auth.signUp({ email, password });
     if (error) throw error;
-    setBtnLoading(false, '');
-    renderRegisterOTP(email);
+    if (data.user && data.session) {
+      // Email confirmation is OFF - user is logged in immediately
+      currentUser = data.user;
+      await onAuthSuccess(data.user);
+    } else if (data.user) {
+      // Email confirmation is ON - show info to user
+      showAuthInfo('একাউন্ট তৈরি হয়েছে! অনুগ্রহ করে আপনার ইমেইল চেক করুন এবং লিংকে ক্লিক করে ভেরিফাই করুন। এরপর লগইন করুন।');
+      setBtnLoading(false, 'রেজিস্টার করুন');
+      setTimeout(() => renderLogin(), 4000);
+    } else {
+      throw new Error('রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
+    }
   } catch (e) {
     setBtnLoading(false, 'রেজিস্টার করুন');
     showAuthError(e.message || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
@@ -442,15 +435,14 @@ async function doForgot() {
   setBtnLoading(true);
   try {
     // Send recovery OTP
-    const { data, error } = await sb.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false }
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
     });
     if (error) throw error;
     setBtnLoading(false, '');
     renderForgotOTP(email);
   } catch (e) {
-    setBtnLoading(false, 'OTP পাঠান');
+    setBtnLoading(false, 'লিংক পাঠান');
     showAuthError(e.message || 'OTP পাঠাতে সমস্যা।');
   }
 }
