@@ -28,7 +28,7 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
 
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("https://gronthagar781-alt.github.io/-_/");
+        webView.loadUrl("https://gronthagar781-alt.github.io/-_-/");
     }
 
     @Override
