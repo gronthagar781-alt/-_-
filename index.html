@@ -559,6 +559,12 @@ async function doLogout() {
     try { await sb.auth.signOut(); } catch(e) {}
   }
   currentUser = null;
+  // Clear local data
+  progress = loadProgress();
+  history = [];
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
+  // Show login screen
   document.getElementById('auth-overlay').style.display = 'flex';
   document.getElementById('auth-user-bar').style.display = 'none';
   document.getElementById('auth-sync-badge').classList.remove('show');
@@ -568,13 +574,18 @@ async function doLogout() {
 // ===== AUTH SUCCESS + CLOUD SYNC =====
 async function onAuthSuccess(user) {
   currentUser = user;
+  // Clear local data from previous user
+  progress = loadProgress();
+  history = [];
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
   // Hide auth overlay
   document.getElementById('auth-overlay').style.display = 'none';
   // Show user bar
   document.getElementById('auth-user-bar').style.display = 'flex';
   document.getElementById('auth-user-email').textContent = user.email;
   document.getElementById('auth-sync-badge').classList.add('show');
-  // Load cloud data first
+  // Load cloud data (this user's data)
   await loadCloudData();
   // Build nav (clears old one first)
   buildNav();
@@ -600,11 +611,11 @@ async function loadCloudData() {
     const { data, error } = await sb.from('user_data').select('data_key,data_value').eq('user_id', currentUser.id);
     if (error) throw error;
     if (data && data.length > 0) {
+      // Load this user's data from cloud
       data.forEach(row => {
         try {
           const val = JSON.parse(row.data_value);
           if (row.data_key === 'progress') {
-            // Replace local progress with cloud data (cloud is source of truth)
             progress = val;
           } else if (row.data_key === 'history') {
             history = val;
@@ -614,6 +625,10 @@ async function loadCloudData() {
       // Save to localStorage as cache
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch(e) {}
       try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
+    } else {
+      // No cloud data for this user - start fresh
+      progress = loadProgress();
+      history = [];
     }
     showSyncBadge('✓ সিঙ্ক হয়েছে', false);
   } catch (e) {
