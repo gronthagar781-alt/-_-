@@ -434,13 +434,22 @@ async function doForgotSendOTP() {
   if (!sb) { showAuthError('Supabase কনফিগার করা হয়নি।'); return; }
   setBtnLoading(true);
   try {
-    const { data, error } = await sb.rpc('send_password_reset_otp', { user_email: email });
+    // Use Supabase's built-in resetPasswordForEmail - sends via SMTP (Gmail)
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
     if (error) throw error;
     setBtnLoading(false, '');
-    renderForgotVerifyOTP(email);
+    // Show screen telling user to check email for link
+    document.getElementById('auth-content').innerHTML = `
+      <h2>ইমেইল চেক করুন</h2>
+      <p class="auth-sub">আপনার ইমেইল <strong>${esc(email)}</strong> এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। ইমেইল খুলে লিংকে ক্লিক করুন।</p>
+      <div class="auth-info" id="auth-info">ইমেইল না পেলে Spam ফোল্ডার চেক করুন।</div>
+      <button class="auth-btn auth-btn-primary" onclick="renderLogin()">ফিরে যান লগইনে</button>
+    `;
   } catch (e) {
     setBtnLoading(false, 'OTP পাঠান');
-    showAuthError(e.message || 'OTP পাঠাতে সমস্যা।');
+    showAuthError(e.message || 'ইমেইল পাঠাতে সমস্যা।');
   }
 }
 
