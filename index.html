@@ -572,9 +572,9 @@ async function onAuthSuccess(user) {
   document.getElementById('auth-user-bar').style.display = 'flex';
   document.getElementById('auth-user-email').textContent = user.email;
   document.getElementById('auth-sync-badge').classList.add('show');
-  // Load cloud data
+  // Load cloud data first
   await loadCloudData();
-  // Re-init app
+  // Build nav (clears old one first)
   buildNav();
   showPage('dashboard');
 }
@@ -598,21 +598,22 @@ async function loadCloudData() {
     const { data, error } = await sb.from('user_data').select('data_key,data_value').eq('user_id', currentUser.id);
     if (error) throw error;
     if (data && data.length > 0) {
-      // Merge cloud data over local data (cloud takes priority)
       data.forEach(row => {
         try {
           const val = JSON.parse(row.data_value);
           if (row.data_key === 'progress') {
-            progress = Object.assign(progress, val);
+            // Replace local progress with cloud data (cloud is source of truth)
+            progress = val;
           } else if (row.data_key === 'history') {
             history = val;
           }
         } catch(e) {}
       });
-      saveProgress(progress);
-      saveHistory(history);
+      // Save to localStorage as cache
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch(e) {}
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
     }
-    showSyncBadge('✓ ডেটা সিঙ্ক হয়েছে', false);
+    showSyncBadge('✓ সিঙ্ক হয়েছে', false);
   } catch (e) {
     console.error('Cloud load error:', e);
     showSyncBadge('⚠ সিঙ্ক ব্যর্থ', false);
@@ -621,7 +622,6 @@ async function loadCloudData() {
 
 async function saveCloudData(key, value) {
   if (!sb || !currentUser) return;
-  showSyncBadge('⟳ সেভ হচ্ছে...', true);
   try {
     const { error } = await sb.from('user_data').upsert({
       user_id: currentUser.id,
@@ -630,10 +630,8 @@ async function saveCloudData(key, value) {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,data_key' });
     if (error) throw error;
-    showSyncBadge('✓ সিঙ্ক হয়েছে', false);
   } catch (e) {
     console.error('Cloud save error:', e);
-    showSyncBadge('⚠ সিঙ্ক ব্যর্থ', false);
   }
 }
 
@@ -641,7 +639,14 @@ async function saveCloudData(key, value) {
 function debouncedCloudSync(key, value) {
   if (!sb || !currentUser) return;
   if (syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => saveCloudData(key, value), 2000);
+  syncTimer = setTimeout(() => {
+    saveCloudData(key, value);
+    showSyncBadge('✓ সেভ হয়েছে', false);
+    setTimeout(() => {
+      const b = document.getElementById('auth-sync-badge');
+      if (b) b.classList.remove('show');
+    }, 3000);
+  }, 2000);
 }
 
 // ===== CHECK AUTH ON LOAD =====
@@ -716,7 +721,7 @@ function loadHistory(){try{const d=localStorage.getItem(HISTORY_KEY);if(d)return
 function saveHistory(d){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(d));debouncedCloudSync('history',d)}catch(e){}}
 let progress=loadProgress();let history=loadHistory();
 // Build nav
-function buildNav(){const nav=document.getElementById('nav');NAV_ITEMS.forEach(item=>{const b=document.createElement('button');b.className='nav-btn';b.textContent=item.label;b.dataset.page=item.id;b.onclick=function(){showPage(item.id)};nav.appendChild(b)})}
+function buildNav(){const nav=document.getElementById('nav');nav.innerHTML='';NAV_ITEMS.forEach(item=>{const b=document.createElement('button');b.className='nav-btn';b.textContent=item.label;b.dataset.page=item.id;b.onclick=function(){showPage(item.id)};nav.appendChild(b)})}
 function showPage(id){
 document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');p.style.animation='none'});
 document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
