@@ -436,7 +436,7 @@ async function doForgotSendOTP() {
   try {
     // Use Supabase's built-in resetPasswordForEmail - sends via SMTP (Gmail)
     const { data, error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+      redirectTo: 'https://gronthagar781-alt.github.io/-_-/'
     });
     if (error) throw error;
     setBtnLoading(false, '');
@@ -656,7 +656,13 @@ async function checkAuthState() {
   const accessToken = hashParams.get('access_token');
   const refreshToken = hashParams.get('refresh_token');
   const type = hashParams.get('type');
-  if (accessToken && type === 'recovery') {
+  const errorDesc = hashParams.get('error_description');
+  if (errorDesc) {
+    renderLogin();
+    setTimeout(() => showAuthError(decodeURIComponent(errorDesc)), 500);
+    return;
+  }
+  if (accessToken && (type === 'recovery' || type === 'signup')) {
     // User clicked password reset link - set session and show reset screen
     const { data, error } = await sb.auth.setSession({
       access_token: accessToken,
