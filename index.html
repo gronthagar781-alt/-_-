@@ -193,6 +193,27 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
 </head>
 <body>
 
+<div id="diag" style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#000;color:#0f0;font-size:10px;padding:4px;font-family:monospace;white-space:pre;max-height:200px;overflow:auto">JS loading...</div>
+<script>
+// Diagnostic script - runs first
+var _diag = document.getElementById('diag');
+function _log(msg){
+  if(_diag) _diag.textContent += '\n' + msg;
+  console.log('[DIAG]', msg);
+}
+_log('Inline JS running');
+_log('window.supabase: ' + (typeof window.supabase));
+if(typeof window.supabase !== 'undefined' && window.supabase.createClient){
+  _log('createClient available');
+} else {
+  _log('ERROR: createClient NOT available');
+}
+// Hide diagnostic after 10s
+setTimeout(function(){
+  if(_diag) _diag.style.display = 'none';
+}, 10000);
+</script>
+
 <div id="auth-overlay">
   <div class="auth-card" id="auth-card">
     <div class="auth-logo">🏛️</div>
