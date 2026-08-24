@@ -399,13 +399,21 @@ async function doLogin() {
   if (!sb) { showAuthError('সার্ভার এখনও লোড হয়নি। কিছুক্ষণ অপেক্ষা করুন অথবা নিচের "লগইন ছাড়াই ব্যবহার করুন" বাটনে ক্লিক করুন।'); return; }
   setBtnLoading(true);
   try {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    const loginPromise = sb.auth.signInWithPassword({ email, password });
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('সার্ভারে কানেক্ট হতে সময় লাগছে। ইন্টারনেট কানেকশন চেক করুন।')), 15000)
+    );
+    const { data, error } = await Promise.race([loginPromise, timeoutPromise]);
     if (error) throw error;
     currentUser = data.user;
     await onAuthSuccess(data.user);
   } catch (e) {
     setBtnLoading(false, 'লগইন করুন');
-    showAuthError(e.message || 'লগইন ব্যর্থ হয়েছে।');
+    let msg = e.message || 'লগইন ব্যর্থ হয়েছে।';
+    if(msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch')){
+      msg = 'সার্ভারে কানেক্ট হওয়া যাচ্ছে না। ইন্টারনেট কানেকশন চেক করুন।';
+    }
+    showAuthError(msg);
   }
 }
 
