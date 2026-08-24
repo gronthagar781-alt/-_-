@@ -10,15 +10,12 @@ try {
   const mcqsStart=html.indexOf('const SUBJECT_MCQS=');
   const mcqsEnd=html.indexOf('];',mcqsStart);
   if(mcqsStart===-1||mcqsEnd===-1)throw new Error('SUBJECT_MCQS not found');
-  
-  // Read gzip base64 parts, concatenate, decode, decompress
   let b64='';
-  for(let i=1;i<=3;i++){
-    try{b64+=fs.readFileSync('mcqs_gz_b64_part'+i+'.txt','utf8').trim()}catch(e){}
+  for(let i=1;i<=15;i++){
+    try{b64+=fs.readFileSync('mcqs_chunk_'+i+'.txt','utf8').trim()}catch(e){}
   }
   const decompressed=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
   const newMcqs=JSON.parse(decompressed);
-  
   const newMcqsJs=newMcqs.map(m=>JSON.stringify(m)).join(',');
   html=html.substring(0,mcqsEnd)+','+newMcqsJs+html.substring(mcqsEnd);
   changes.push('Added '+newMcqs.length+' new MCQs to SUBJECT_MCQS');
@@ -43,9 +40,7 @@ try {
   if(html.includes(oldOc)) {
     html=html.replace(oldOc,newOc);
     changes.push('Added quiz link to openChapter');
-  } else {
-    console.log('openChapter pattern not found');
-  }
+  } else { console.log('openChapter pattern not found'); }
 } catch(e) { console.error('PATCH 3 failed:',e.message); }
 
 // === PATCH 4: Replace goToDayTask with quiz link ===
@@ -55,9 +50,7 @@ try {
   if(html.includes(oldGtd)) {
     html=html.replace(oldGtd,newGtd);
     changes.push('Added quiz link to goToDayTask');
-  } else {
-    console.log('goToDayTask pattern not found');
-  }
+  } else { console.log('goToDayTask pattern not found'); }
 } catch(e) { console.error('PATCH 4 failed:',e.message); }
 
 // Write back
