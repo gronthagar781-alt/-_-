@@ -188,7 +188,7 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
 .pwd-toggle:hover{color:var(--p1);background:rgba(102,126,234,0.1)}
 
 </style>
-<script src="supabase.min.js"></script>
+<script src="supabase.min.js?v=8"></script>
 
 </head>
 <body>
@@ -841,10 +841,10 @@ async function loadData(){
   try{
     showLoadingSpinner();
     const [studyRes, qsetRes, mcqRes, caRes] = await Promise.all([
-      fetch('data_study_data.json'),
-      fetch('data_question_sets.json'),
-      fetch('data_subject_mcqs.json'),
-      fetch('data_current_affairs.json')
+      fetch('data_study_data.json?v=8'),
+      fetch('data_question_sets.json?v=8'),
+      fetch('data_subject_mcqs.json?v=8'),
+      fetch('data_current_affairs.json?v=8')
     ]);
     STUDY_DATA = await studyRes.json();
     QUESTION_SETS = await qsetRes.json();
