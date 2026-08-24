@@ -186,7 +186,7 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
 .pwd-toggle:hover{color:var(--p1);background:rgba(102,126,234,0.1)}
 
 </style>
-<!-- Supabase loaded dynamically by JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -210,9 +210,6 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
       </div>
     </div>
     <button class="auth-btn auth-btn-primary" onclick="doLogin()" id="auth-submit-btn" style="width:100%;margin-top:16px;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1rem;cursor:pointer;font-weight:600">লগইন করুন</button>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.1)">
-      <button onclick="skipLogin()" style="width:100%;background:rgba(102,126,234,0.1);color:#667eea;border:1px solid #667eea;padding:10px;border-radius:8px;cursor:pointer;font-size:0.9rem">লগইন ছাড়াই ব্যবহার করুন →</button>
-    </div>
     <div class="auth-link" onclick="renderRegister()" style="text-align:center;margin-top:12px;color:#667eea;cursor:pointer;font-size:0.85rem">নতুন একাউন্ট তৈরি করুন</div>
     <div class="auth-link" onclick="renderForgot()" style="text-align:center;margin-top:4px;color:#667eea;cursor:pointer;font-size:0.85rem">পাসওয়ার্ড ভুলে গেছেন?</div>
   </div>
@@ -247,36 +244,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_0ulaURbUJDWkwE9z6gIXKg_fkiSBPXo';
 let sb = null;
 let currentUser = null;
 
-// Initialize Supabase - load CDN script dynamically to avoid blocking page
-function initSupabase(){
-  if(typeof window.supabase !== 'undefined' && window.supabase.createClient){
-    try{
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }catch(e){console.error('Supabase init error:',e)}
-    return;
-  }
-  // Load Supabase CDN script dynamically
-  if(!document.getElementById('supabase-cdn-script')){
-    var s = document.createElement('script');
-    s.id = 'supabase-cdn-script';
-    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    s.onload = function(){
-      // Script loaded, try to init
-      if(window.supabase && window.supabase.createClient){
-        try{
-          sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }catch(e){console.error('Supabase init error:',e)}
-      }
-    };
-    s.onerror = function(){
-      console.error('Failed to load Supabase CDN');
-    };
-    document.head.appendChild(s);
-  }
-  // Retry in 3s if still not loaded
-  if(!sb){
-    setTimeout(initSupabase, 3000);
-  }
+// Initialize Supabase
+if (typeof window.supabase !== 'undefined' && SUPABASE_URL.startsWith('https://')) {
+  try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.error('Supabase init error:', e); }
 }
 
 // ===== AUTH STATE =====
@@ -343,9 +313,6 @@ function renderLogin() {
       </div>
     </div>
     <button class="auth-btn auth-btn-primary" onclick="doLogin()" id="auth-submit-btn">লগইন করুন</button>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.1)">
-      <button class="auth-btn" onclick="skipLogin()" style="width:100%;background:rgba(102,126,234,0.1);color:#667eea;border:1px solid #667eea;padding:10px;border-radius:8px;cursor:pointer;font-size:0.9rem">লগইন ছাড়াই ব্যবহার করুন →</button>
-    </div>
     <div class="auth-link" onclick="renderRegister()" style="margin-top:12px">নতুন একাউন্ট তৈরি করুন</div>
     <div class="auth-link" onclick="renderForgot()" style="margin-top:4px">পাসওয়ার্ড ভুলে গেছেন?</div>
   `;
@@ -789,15 +756,6 @@ function debouncedCloudSync(key, value) {
 }
 
 // ===== CHECK AUTH ON LOAD =====
-
-function skipLogin(){
-  currentUser = {id:'local-user', email:'guest@local', user_metadata:{}};
-  document.getElementById('auth-overlay').style.display='none';
-  document.getElementById('auth-user-bar').style.display='flex';
-  buildNav();
-  showPage('dashboard');
-  loadData();
-}
 
 async function checkAuthState() {
   // Safety timeout: if auth check takes too long, show login anyway
