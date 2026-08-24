@@ -581,10 +581,10 @@ async function loadData(){
   try{
     showLoadingSpinner();
     const [studyRes, qsetRes, mcqRes, caRes] = await Promise.all([
-      fetch('data_study_data.json'),
-      fetch('data_question_sets.json'),
-      fetch('data_subject_mcqs.json'),
-      fetch('data_current_affairs.json')
+      fetch('./data_study_data.json'),
+      fetch('./data_question_sets.json'),
+      fetch('./data_subject_mcqs.json'),
+      fetch('./data_current_affairs.json')
     ]);
     STUDY_DATA = await studyRes.json();
     QUESTION_SETS = await qsetRes.json();
