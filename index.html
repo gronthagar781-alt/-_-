@@ -738,8 +738,18 @@ function debouncedCloudSync(key, value) {
 
 // ===== CHECK AUTH ON LOAD =====
 async function checkAuthState() {
+  // Safety timeout: if auth check takes too long, show login anyway
+  const authTimeout = setTimeout(() => {
+    if (!currentUser && document.getElementById('auth-content').innerHTML === '') {
+      console.log('Auth check timeout - showing login');
+      renderLogin();
+    }
+  }, 5000);
+  window._authTimeout = authTimeout;
+  
   if (!sb) {
     // Supabase not configured - show login screen
+    clearTimeout(authTimeout);
     renderLogin();
     return;
   }
@@ -777,9 +787,11 @@ async function checkAuthState() {
   // Check existing session
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user) {
+    clearTimeout(window._authTimeout);
     currentUser = session.user;
     await onAuthSuccess(session.user);
   } else {
+    clearTimeout(window._authTimeout);
     renderLogin();
   }
   // Listen for auth changes
@@ -822,7 +834,16 @@ async function loadData(){
   }catch(err){
     console.error('Data load error:', err);
     hideLoadingSpinner();
-    alert('ডেটা লোড করতে সমস্যা হয়েছে। পেজ রিফ্রেশ করুন।');
+    // Show retry option instead of blocking alert
+    let r=document.getElementById('data-retry');
+    if(!r){
+      r=document.createElement('div');
+      r.id='data-retry';
+      r.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(250,112,154,0.9);color:#fff;padding:12px 20px;border-radius:10px;cursor:pointer;z-index:9998;font-size:0.85rem';
+      r.textContent='ডেটা লোড ব্যর্থ। আবার চেষ্টা করুন';
+      r.onclick=()=>{r.remove();loadData()};
+      document.body.appendChild(r);
+    }
   }
 }
 
@@ -1377,6 +1398,8 @@ function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileRe
 window.addEventListener('beforeunload',function(){
   if(syncTimer){clearTimeout(syncTimer);syncTimer=null}
 });
-loadData().then(()=>checkAuthState());
+// Run auth check and data loading in parallel
+checkAuthState();
+loadData();
 </script>
 <div style='text-align:center;padding:12px;color:rgba(255,255,255,0.5);font-size:.8rem'>\n&copy; 2026 পঞ্চায়েত প্রস্তুতি | সর্বস্বত্ব সংরক্ষিত<br>\nDeveloped by @Champ\n</div>\n</body></html>
