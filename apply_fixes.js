@@ -10,7 +10,7 @@ try {
   const mcqsStart=html.indexOf('const SUBJECT_MCQS=');
   const mcqsEnd=html.indexOf('];',mcqsStart);
   if(mcqsStart===-1||mcqsEnd===-1)throw new Error('SUBJECT_MCQS not found');
-  const newMcqs=JSON.parse(fs.readFileSync('new_mcqs.json','utf8'));
+  const newMcqs=[].concat(JSON.parse(fs.readFileSync('new_mcqs_part1.json','utf8')),JSON.parse(fs.readFileSync('new_mcqs_part2.json','utf8')),JSON.parse(fs.readFileSync('new_mcqs_part3.json','utf8')));
   const newMcqsJs=newMcqs.map(m=>JSON.stringify(m)).join(',');
   html=html.substring(0,mcqsEnd)+','+newMcqsJs+html.substring(mcqsEnd);
   changes.push('Added '+newMcqs.length+' new MCQs to SUBJECT_MCQS');
