@@ -186,7 +186,7 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
 .pwd-toggle:hover{color:var(--p1);background:rgba(102,126,234,0.1)}
 
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
 
@@ -225,10 +225,19 @@ const SUPABASE_ANON_KEY = 'sb_publishable_0ulaURbUJDWkwE9z6gIXKg_fkiSBPXo';
 let sb = null;
 let currentUser = null;
 
-// Initialize Supabase
-if (typeof window.supabase !== 'undefined' && SUPABASE_URL.startsWith('https://')) {
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase (with fallback for slow CDN)
+function initSupabase(){
+  if(typeof window.supabase !== 'undefined' && window.supabase.createClient){
+    try{
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }catch(e){console.error('Supabase init error:',e)}
+  }
+  // Check again in 2s if not yet loaded (CDN might be slow)
+  if(!sb){
+    setTimeout(initSupabase, 2000);
+  }
 }
+initSupabase();
 
 // ===== AUTH STATE =====
 let authMode = 'login'; // login | register | register-otp | forgot | forgot-otp | reset
