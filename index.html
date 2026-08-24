@@ -786,4 +786,459 @@ html+=`<div class="card"><h2>🚀 দ্রুত শুরু</h2><div class="t
 <div class="tab-btn" onclick="showPage('plan')"><div class="icon">📅</div><div class="title">১৮০ দিনের প্ল্যান</div><div class="count">দৈনিক টার্গেট</div></div>
 <div class="tab-btn" onclick="showPage('subject-quiz')"><div class="icon">🧩</div><div class="title">বিষয়ভিত্তিক কুইজ</div><div class="count">৬ বিষয়</div></div>
 <div class="tab-btn" onclick="showPage('report')"><div class="icon">📊</div><div class="title">প্রগ্রেস রিপোর্ট</div><div class="count">বিস্তারিত</div></div>
-<div class="tab-btn" onclick="showPage('pyq')"><div class="icon">📋</div><div class="title">PY
+<div class="tab-btn" onclick="showPage('pyq')"><div class="icon">📋</div><div class="title">PYQ 2018</div><div class="count">৫ সেট</div></div>
+</div></div>`;
+document.getElementById('dashboard').innerHTML=html;
+}
+// STUDY
+let studyState={vol:null};
+function loadStudy(){
+studyState={vol:null};
+renderStudySubjects();
+}
+function renderStudySubjects(){
+let html='<div class="card"><h2>📚 পড়াশোনা</h2><input type="text" class="search-box" placeholder="🔍 অধ্যায় খুঁজুন..." oninput="filterChapters()">';
+STUDY_DATA.forEach((v,vi)=>{
+const t=v.chapters.length;let r=0;v.chapters.forEach(c=>{if(progress.chapters_read[v.volume+'|'+c.title])r++});const p=t>0?Math.round((r/t)*100):0;
+html+=`<div class="subject-card" onclick="toggleChapters(${vi})"><h3>${v.volume}: ${esc(v.subject)}</h3><div class="meta">${t} অধ্যায় • ${r} সম্পন্ন • ${p}%</div><div class="progress-bar" style="height:6px;margin-top:8px"><div class="progress-fill grad1" style="width:${p}%"></div></div><div id="ch-${vi}" style="display:none;margin-top:12px"></div></div>`;
+});
+html+='</div>';
+document.getElementById('study').innerHTML=html;
+}
+function toggleChapters(vi){
+const d=document.getElementById('ch-'+vi);
+if(d.style.display==='none'){
+const v=STUDY_DATA[vi];let h='';
+v.chapters.forEach((c,ci)=>{const k=v.volume+'|'+c.title;const done=progress.chapters_read[k];
+h+=`<div class="chapter-item ${done?'done':''}" onclick="openChapter(${vi},${ci})"><span class="ch-title">${esc(c.title)}</span>${done?'<span class="badge b-done">সম্পন্ন</span>':'<span class="badge b-pending">পড়ুন</span>'}</div>`});
+d.innerHTML=h;d.style.display='block';
+}else d.style.display='none';
+}
+function openChapter(vi,ci){
+const v=STUDY_DATA[vi],c=v.chapters[ci];const k=v.volume+'|'+c.title;const done=progress.chapters_read[k];
+const _qc=SUBJECT_MCQS.filter(m=>m.category===v.subject&&(m.subsubject||'')===c.title).length;
+let html=`
+<button class="btn btn-back" onclick="renderStudySubjects()">← বিষয়সমূহ</button>
+<h3 id="chapter-title"></h3>
+<div id="chapter-content" class="chapter-content"></div>
+${_qc>0?'<button class="btn btn-primary" style="margin-top:12px" onclick="startSubjectQuiz()">কুইজ শুরু করুন ('+_qc+' প্রশ্ন)</button>':''}
+`;
+
+
+function markRead(vi,ci){const v=STUDY_DATA[vi],c=v.chapters[ci],k=v.volume+'|'+c.title;progress.chapters_read[k]=!progress.chapters_read[k];saveProgress(progress);if(progress.chapters_read[k]){addHistory('study',v.subject+' - '+c.title,'সম্পন্ন');showConfetti()}renderStudySubjects()}
+function filterChapters(){const q=(document.querySelector('.search-box')?.value||'').toLowerCase();document.querySelectorAll('.subject-card').forEach((card,vi)=>{const v=STUDY_DATA[vi];if(!v)return;const m=v.chapters.some(c=>c.title.toLowerCase().includes(q));card.style.display=m||!q?'':'none'})}
+// PLAN - 180 days
+function loadPlan(){
+const plan=generatePlan();
+let totalDone=0,totalDays=0;
+let allDays=[];
+plan.forEach(m=>m.days.forEach(d=>{allDays.push(d)}));
+allDays.forEach((d,i)=>{
+const dk='day_'+(i+1);
+if(progress.day_targets[dk])totalDone++;
+totalDays++
+});
+const op=totalDays>0?Math.round((totalDone/totalDays)*100):0;
+let html='<div class="card" style="margin-bottom:16px"><h2>📊 প্ল্যান প্রগ্রেস</h2><div class="progress-bar" style="height:20px"><div class="progress-fill grad4" style="width:'+op+'%">'+op+'% ('+totalDone+'/'+totalDays+' দিন)</div></div></div>';
+html+='<div class="card"><h2>📅 ১৮০ দিনের পড়ার প্ল্যান</h2><div class="info-box">✅ প্রতিদিন একটি করে টার্গেট সম্পন্ন করুন। একটি দিনের টপিক পড়ে "সম্পন্ন" করলে পরের দিন আনলক হবে।</div></div>';
+let globalDay=0;
+plan.forEach((m,mi)=>{
+let doneCount=0;
+let dayTabsHtml='';
+m.days.forEach((d,di)=>{
+globalDay++;
+const dk='day_'+globalDay;
+const done=progress.day_targets[dk];
+if(done)doneCount++;
+const prevDone=globalDay===1||progress.day_targets['day_'+(globalDay-1)];
+const locked=!prevDone&&!done;
+if(locked){
+dayTabsHtml+='<div class="day-tab locked"><div class="day-tab-num">দিন '+globalDay+'</div><div class="day-tab-chk">🔒</div><div class="day-tab-task">'+esc(d.subject.substring(0,15))+'</div></div>';
+}else{
+dayTabsHtml+='<div class="day-tab'+(done?' done':'')+'" onclick="goToDayTask('+d.vi+','+d.ci+','+globalDay+')"><div class="day-tab-num">দিন '+globalDay+'</div><div class="day-tab-chk">'+(done?'✓':'○')+'</div><div class="day-tab-task">'+esc(d.title.substring(0,35))+(d.title.length>35?'…':'')+'</div></div>';
+}
+});
+const p=m.days.length>0?Math.round((doneCount/m.days.length)*100):0;
+html+='<div class="month-card" id="month-'+mi+'" style="border-left-color:'+m.color+'"><h3>'+esc(m.title)+'</h3><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:.8rem;color:var(--gray)">'+doneCount+'/'+m.days.length+' দিন সম্পন্ন</span><span style="font-size:.8rem;font-weight:700;color:'+m.color+'">'+p+'%</span></div><div class="progress-bar" style="height:8px;margin-bottom:12px"><div class="progress-fill grad1" style="width:'+p+'%"></div></div><div class="day-tabs-grid">'+dayTabsHtml+'</div></div>';
+});
+document.getElementById('plan').innerHTML=html;
+}
+function goToDayTask(vi,ci,dayNum){
+showPage('study');
+setTimeout(function(){
+var v=STUDY_DATA[vi],c=v.chapters[ci];
+var html="<button class=\"btn btn-primary\" onclick=\"showPage('plan')\">পরিকল্পনা দেখুন</button>";
+
+
+document.getElementById('study').innerHTML=html;
+},100);
+}
+}function completeDayTask(vi,ci,dayNum){
+var v=STUDY_DATA[vi],c=v.chapters[ci];
+progress.chapters_read[vi+'|'+c.title]=true;
+progress.day_targets['day_'+dayNum]=true;
+saveProgress(progress);
+addHistory('plan','দিন '+dayNum+' সম্পন্ন: '+c.title,'✅');
+showConfetti();
+showPage('plan');
+}
+
+function generatePlan(){
+const subjects=[];
+STUDY_DATA.forEach((v,vi)=>{
+v.chapters.forEach((c,ci)=>{
+subjects.push({vi,ci,vol:v.volume,subject:v.subject,title:c.title})
+})
+});
+const shuffled=[];
+const groups={};
+subjects.forEach(s=>{
+const key=s.vol;
+if(!groups[key])groups[key]=[];
+groups[key].push(s)
+});
+const maxLen=Math.max(...Object.values(groups).map(g=>g.length));
+const order=['Vol 1','Vol 2','Vol 3','Vol 4','Vol 5','Free Notes'];
+for(let i=0;i<maxLen;i++){
+order.forEach(vol=>{
+if(groups[vol]&&groups[vol][i])shuffled.push(groups[vol][i])
+})
+}
+const days=[];
+for(let i=0;i<180;i++){
+const s=shuffled[i%shuffled.length];
+days.push({
+day:i+1,
+vi:s.vi,
+ci:s.ci,
+subject:s.subject,
+title:s.title,
+task:s.subject+': '+s.title
+})
+}
+return[{month:1,title:'দিন ১-৩০',color:'#667eea',days:days.slice(0,30)},
+{month:2,title:'দিন ৩১-৬০',color:'#00b09b',days:days.slice(30,60)},
+{month:3,title:'দিন ৬১-৯০',color:'#fa709a',days:days.slice(60,90)},
+{month:4,title:'দিন ৯১-১২০',color:'#f093fb',days:days.slice(90,120)},
+{month:5,title:'দিন ১২১-১৫০',color:'#4facfe',days:days.slice(120,150)},
+{month:6,title:'দিন ১৫১-১৮০',color:'#00f2fe',days:days.slice(150,180)}]
+}
+
+function toggleDay(m,d){const k='m'+m+'_d'+d;progress.day_targets[k]=!progress.day_targets[k];saveProgress(progress);if(progress.day_targets[k])addHistory('plan','দিনের টার্গেট সম্পন্ন: মাস '+m+', দিন '+d,'সম্পন্ন');loadPlan()}
+function expandAllPlan(exp){document.querySelectorAll('[id^="days-"]').forEach(d=>d.style.display=exp?'block':'none')}
+// PRACTICE SETS
+function loadPractice(){
+const ps=QUESTION_SETS.filter(s=>s.type==='practice');
+let html='<div class="card"><h2>📝 প্র্যাকটিস সেট (৩০টি)</h2><p>প্রতিটি সেটে ৮৫টি প্রশ্ন। উত্তর সহ।</p><div class="quiz-set-grid">';
+ps.forEach(s=>{const done=progress.practice_done[s.title];const qc=s.questions.length;
+html+=`<div class="quiz-set-btn ${done?'done':''}" onclick="startQuiz('${s.title}','practice')"><div class="set-title">${esc(s.title)}</div><div class="set-meta">${qc} প্রশ্ন ${done?'✅':''}</div></div>`});
+html+='</div></div>';document.getElementById('practice').innerHTML=html;
+}
+// MOCK TEST
+function loadMockTest(){
+const mt=progress.mock_tests||[];const avg=mt.length>0?Math.round(mt.reduce((s,t)=>s+(t.percentage||0),0)/mt.length):0;
+let html=`<div class="card"><h2>🎯 মক টেস্ট</h2><p>13514 টি প্রশ্ন থেকে প্রতিবার এলোমেলো ২৫টি প্রশ্নে টেস্ট দিন।</p><div class="stat-grid"><div class="stat-box"><div class="num">13514</div><div class="label">মোট প্রশ্ন</div></div><div class="stat-box"><div class="num">${mt.length}</div><div class="label">টেস্ট দেওয়া</div></div><div class="stat-box"><div class="num">${avg}%</div><div class="label">গড় স্কোর</div></div></div><button class="btn btn-primary" style="padding:14px 28px;font-size:1.05rem" onclick="startMockTest()">🚀 নতুন মক টেস্ট শুরু করুন</button></div><div id="mocktest-area"></div>`;
+document.getElementById('mocktest').innerHTML=html;
+}
+function startMockTest(){
+let all=[];QUESTION_SETS.forEach(s=>s.questions.forEach(q=>all.push({q,setId:s.title,num:q.number,ans:s.answers?s.answers[q.number]:null})));
+SUBJECT_MCQS.forEach((m,i)=>all.push({q:m,num:i+1,ans:m.answer,isSub:true}));
+const sh=all.sort(()=>Math.random()-0.5).slice(0,25);
+const qs=sh.map((item,i)=>{let q=item.q;if(item.isSub){return{number:i+1,question:item.q.question,options:item.q.options}}else{return{number:i+1,question:item.q.question,options:item.q.options}}});
+const answers={};sh.forEach((item,i)=>{answers[i+1]=item.ans});
+startQuizEngine({title:'মক টেস্ট '+new Date().toLocaleDateString('bn-BD'),questions:qs,answers:answers,explanations:{}},'mocktest',true);
+}
+// SUBJECT QUIZ
+function loadSubjectQuiz(){
+const cats={};
+SUBJECT_MCQS.forEach(m=>{if(!cats[m.category])cats[m.category]=[];cats[m.category].push(m)});
+let html='<div class="card"><h2>🧩 বিষয়ভিত্তিক কুইজ</h2><p>পড়াশোনার বিষয় অনুযায়ী কুইজ দিন।</p></div>';
+Object.keys(cats).sort().forEach(cat=>{
+const qs=cats[cat];
+html+='<div class="card"><h3 style="cursor:pointer;color:var(--p2)" onclick="toggleSubQuiz(this)">'+esc(cat)+' ('+qs.length+' প্রশ্ন) ▾</h3>';
+const subs={};
+qs.forEach(m=>{const ss=m.subsubject||'বিবিধ';if(!subs[ss])subs[ss]=[];subs[ss].push(m)});
+html+='<div class="sub-quiz-container" style="display:none;margin-top:12px">';
+Object.keys(subs).sort().forEach(ss=>{
+const sq=subs[ss];
+html+='<div class="quiz-set-btn" style="margin-bottom:8px" onclick="startSubSubjectQuiz(\''+cat.replace(/'/g,"\\'")+'\',\''+ss.replace(/'/g,"\\'")+'\')"><div class="set-title">'+esc(ss)+'</div><div class="set-meta">'+sq.length+' প্রশ্ন</div></div>'
+});
+html+='</div></div>'
+});
+document.getElementById('subject-quiz').innerHTML=html
+}
+function toggleSubQuiz(header){
+const c=header.nextElementSibling;
+if(c)c.style.display=c.style.display==='none'?'block':'none'
+}
+function startSubSubjectQuiz(cat,sub){
+const qs=SUBJECT_MCQS.filter(m=>m.category===cat&&(m.subsubject||'বিবিধ')===sub);
+const qsi=qs.map((m,i)=>({number:i+1,question:m.question,options:m.options}));
+const answers={};qs.forEach((m,i)=>{answers[i+1]=m.answer});
+startQuizEngine({title:cat+' - '+sub,questions:qsi,answers:answers,explanations:{}},'subject-quiz',true)
+}
+function startSubjectQuiz(cat){
+const qs=SUBJECT_MCQS.filter(m=>m.category===cat);
+const qsi=qs.map((m,i)=>({number:i+1,question:m.question,options:m.options}));
+const answers={};qs.forEach((m,i)=>{answers[i+1]=m.answer});
+startQuizEngine({title:cat+' কুইজ',questions:qsi,answers:answers,explanations:{}},'subject-quiz',true)
+}
+
+function startSubjectQuiz(cat){
+const qs=SUBJECT_MCQS.filter(m=>m.category===cat).sort(()=>Math.random()-0.5).slice(0,25);
+const questions=qs.map((m,i)=>({number:i+1,question:m.question,options:m.options}));
+const answers={};qs.forEach((m,i)=>answers[i+1]=m.answer);
+startQuizEngine({title:'বিষয়ভিত্তিক: '+cat,questions,answers,explanations:{}},'subject-quiz',false,'subject');
+}
+// PYQ
+
+function caDateToISO(s){const m=s.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);if(!m)return '';const months={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};const mo=months[m[2]];if(!mo)return '';return m[3]+'-'+mo+String(m[1]).padStart(2,'0');}
+function loadCurrentAffairs(){
+const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort((a,b)=>(caDateToISO(b)||'').localeCompare(caDateToISO(a)||''));
+let html='<div class="card"><h2>📰 কারেন্ট অ্যাফেয়ার্স</h2><p>সাম্প্রতিক ঘটনাবলি থেকে গুরুত্বপূর্ণ তথ্য।</p></div>';
+html+='<div class="card"><h3>🔍 খুঁজুন</h3><input type="text" id="ca-search" placeholder="কারেন্ট অ্যাফেয়ার্স খুঁজুন..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:1rem" oninput="searchCA()"></div>';
+html+='<div class="card"><h3>📅 তারিখ নির্বাচন করুন</h3><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;max-height:200px;overflow-y:auto">';
+dates.forEach((d,i)=>{
+html+='<button class="btn ca-date-btn" data-date="'+esc(d)+'" style="padding:8px 14px;font-size:.85rem;background:'+(i===0?'#1a3a5c':'#d0e8ff')+';color:'+(i===0?'#fff':'#1a3a5c')+';border-color:'+(i===0?'#1a3a5c':'#91caff')+'" onclick="showCADate(\''+d+'\')">'+esc(d)+'</button>'
+});
+html+='</div></div><div id="ca-content"></div>';
+document.getElementById('currentaffairs').innerHTML=html;
+if(dates.length>0)showCADate(dates[0])
+}
+function showCADate(date){
+document.querySelectorAll('.ca-date-btn').forEach(function(b){b.style.background='#d0e8ff';b.style.color='#1a3a5c';b.style.borderColor='#91caff'});
+var ab=document.querySelector('.ca-date-btn[data-date="'+date+'"]');
+if(ab){ab.style.background='#1a3a5c';ab.style.color='#fff';ab.style.borderColor='#1a3a5c'}
+const items=CURRENT_AFFAIRS.filter(m=>m.date===date);
+let html='<div class="card"><h3>📅 '+esc(date)+'</h3>';
+if(items.length===0){html+='<p>এই তারিখের কোনো কারেন্ট অ্যাফেয়ার্স নেই।</p></div>';document.getElementById('ca-content').innerHTML=html;return}
+items.forEach((m,i)=>{
+const title=m.title||m.question||'';
+const ans=m.answer||'';
+const det=m.detail||'';
+html+='<div class="question-box '+(i%2===0?'odd':'even')+'" style="margin-bottom:12px">';
+html+='<div class="question-text">'+(i+1)+'. '+esc(title)+'</div>';
+if(ans){html+='<div style="margin-top:8px;padding:8px 12px;background:rgba(0,176,155,0.1);border-left:3px solid #00b09b;border-radius:4px"><strong>✅ উত্তর: </strong>'+esc(ans)+'</div>'}
+if(det){html+='<div style="margin-top:6px;padding:6px 12px;font-size:.9rem;color:var(--gray)"><em>📝 '+esc(det)+'</em></div>'}
+html+='</div>'
+});
+html+='</div>';
+document.getElementById('ca-content').innerHTML=html
+}
+function searchCA(){
+const q=document.getElementById('ca-search').value.toLowerCase().trim();
+if(!q){const dates=[...new Set(CURRENT_AFFAIRS.map(m=>m.date))].sort((a,b)=>(caDateToISO(b)||'').localeCompare(caDateToISO(a)||''));if(dates.length>0)showCADate(dates[0]);return}
+const results=CURRENT_AFFAIRS.filter(m=>{
+const t=(m.title||m.question||'').toLowerCase();
+const a=(m.answer||'').toLowerCase();
+const d=(m.detail||'').toLowerCase();
+return t.includes(q)||a.includes(q)||d.includes(q)
+});
+let html='<div class="card"><h3>🔍 খোঁজ ফলাফল ('+results.length+'টি)</h3>';
+if(results.length===0){html+='<p>কিছু পাওয়া যায়নি।</p></div>';document.getElementById('ca-content').innerHTML=html;return}
+results.slice(0,100).forEach((m,i)=>{
+const title=m.title||m.question||'';
+const ans=m.answer||'';
+const det=m.detail||'';
+html+='<div class="question-box '+(i%2===0?'odd':'even')+'" style="margin-bottom:12px">';
+html+='<div style="font-size:.75rem;color:var(--gray);margin-bottom:4px">📅 '+esc(m.date||'')+'</div>';
+html+='<div class="question-text">'+(i+1)+'. '+esc(title)+'</div>';
+if(ans){html+='<div style="margin-top:8px;padding:8px 12px;background:rgba(0,176,155,0.1);border-left:3px solid #00b09b;border-radius:4px"><strong>✅ উত্তর: </strong>'+esc(ans)+'</div>'}
+if(det){html+='<div style="margin-top:6px;padding:6px 12px;font-size:.9rem;color:var(--gray)"><em>📝 '+esc(det)+'</em></div>'}
+html+='</div>'
+});
+html+='</div>';
+document.getElementById('ca-content').innerHTML=html
+}
+
+function loadPYQ(){
+const ps=QUESTION_SETS.filter(s=>s.type==='pyq');
+let html='<div class="card"><h2>📋 Previous Year Questions (2018)</h2><div class="quiz-set-grid">';
+ps.forEach(s=>{const qc=s.questions.length;html+=`<div class="quiz-set-btn" onclick="startQuiz('${s.title}','pyq')"><div class="set-title">${esc(s.title)}</div><div class="set-meta">${qc} প্রশ্ন</div></div>`});
+html+='</div></div>';document.getElementById('pyq').innerHTML=html;
+}
+// QUIZ ENGINE
+let quiz=null;
+function startQuiz(title,pageId){
+const s=QUESTION_SETS.find(x=>x.title===title);if(!s)return;
+const answers={};s.questions.forEach((q,i)=>{answers[i+1]=s.answers[q.number]||s.answers[i+1]});
+const qs=s.questions.map((q,i)=>({number:i+1,question:q.question,options:q.options}));
+startQuizEngine({title,questions:qs,answers,explanations:{}},pageId,false,'practice');
+}
+function startQuizEngine(set,iageId,isMock,type){
+quiz={set,currentQ:0,answers:{},startTime:Date.now(),isMock,type,pageId,timeLimit:Math.ceil(s.questions.length*63.5)};
+renderQuiz(pageId);
+startTimer();
+}
+function startTimer(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML=m+':'+(s<10?'0'+s:s);if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
+function startQuiter(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML=m+':'+(s<10?'0'+s:s);if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
+
+function renderQuiz(pageId){
+if(!quiz)return;const s=quiz.set;const qi=quiz.currentQ;const q=s.questions[qi];if(!q)return;  
+const timerHtml=quiz.timeLimit?`<div id='quiz-timer' style='float:right;font-size:1.2rem;color:var(--p1);background:rgba(0,0,0,0.15);padding:4px 10px;border-radius:8px'></div>`:'';
+if(s.info){setInfoHtml=`<div class="info-box" style="margin-bottom:12px;font-size:.82rem">${esc(s.info)}</div>`}
+const ans=quiz.answers[qi];const showR=quiz.showResults;const ca=s.answers[q.number]||s.answers[qi+1];
+let oh='';
+['A','B','C','D'].forEach(L=>{if(q.options[L]){let c='option';if(showR){if(L===ca)c+=' correct';else if(L===ans&&L!==ca)c+=' wrong'}else if(L===ans)c+=' selected';
+oh+=`<div class="${c}" onclick="selectAns(${qi},'${L}')"><span class="option-label">${L})</span>${esc(q.options[L])}</div>`}});
+let gh='';
+s.questions.forEach((qq,i)=>{let c='q-num';if(i===qi)c+=' current';else if(quiz.answers[i]!==undefined)c+=' answered';gh+=`<div class="${c}" onclick="goToQ(${i})">${i+1}</div>`});
+let eh='';if(showR&&s.explanations){const e=s.explanations[q.number]||s.explanations[qi+1];if(e)eh=`<div class="info-box" style="margin-top:12px;border-left:4px solid var(--s)"><strong>📝 ব্যাখ্যা:</strong> ${esc(e)}</div>`}
+let instrHtml='';
+if(q.instruction){instrHtml=`<div class="info-box" style="margin-bottom:10px;font-size:.85rem"><strong>📌 নির্দেশিকা:</strong> ${esc(q.instruction)}</div>`}
+const html=`<div class="card">${instrHtml}<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px"><h3 style="color:var(--p2)">${esc(s.title)}</h3><span style="color:var(--gray);font-size:.85rem">প্রশ্ন ${qi+1}/${s.questions.length}</span></div><div class="quiz-nav"><button class="btn btn-primary" onclick="prevQ()" ${qi===0?'disabled':''}>← আগের</button>${!showR?'<button class="btn btn-danger" onclick="submitQuiz()">✓ সাবমিট</button>':''}${showR?`<button class="btn btn-success" onclick="backFromQuiz()">ফিরে যান</button>`:''}<button class="btn btn-primary" onclick="nextQ()" ${qi===s.questions.length-1?'disabled':''}>পরের →</button></div><div class="question-box ${qi%2===0?'odd':'even'}"><div class="question-text">${qi+1}. ${cleanQ(esc(q.question))}</div>${oh}${eh}</div><div class="q-grid">${gh}</div></div>`;
+document.getElementById(quiz.pageId).innerHTML=html;
+}
+function selectAns(qi,L){if(quiz.showResults)return;quiz.answers[qi]=L;renderQuiz(quiz.pageId)}
+function goToQ(i){quiz.currentQ=i;renderQuiz(quiz.pageId)}
+function prevQ(){if(quiz.currentQ>0){quiz.currentQ--;renderQuiz(quiz.pageId)}}
+function nextQ(){if(quiz.currentQ<quiz.set.questions.length-1){quiz.currentQ++;renderQuiz(quiz.pageId)}}
+
+// ===== CONFETTI / VICTORY ANIMATION =====
+let confettiCanvas=null,confettiCtx=null,confettiParticles=[],confettiRAF=null,confettiStart=0;
+const CONFETTI_COLORS=['#667eea','#764ba2','#f093fb','#4facfe','#00f2fe','#00b09b','#96c93d','#fa709a','#fee140','#ffd700','#ff6b6b'];
+function showConfetti(){
+  if(confettiRAF){cancelAnimationFrame(confettiRAF);confettiRAF=null}
+  if(!confettiCanvas){
+    confettiCanvas=document.createElement('canvas');
+    confettiCanvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999';
+    document.body.appendChild(confettiCanvas);
+    confettiCtx=confettiCanvas.getContext('2d');
+  }
+  const dpr=window.devicePixelRatio||1;
+  confettiCanvas.width=window.innerWidth*dpr;
+  confettiCanvas.height=window.innerHeight*dpr;
+  confettiCtx.setTransform(1,0,0,1,0,0);
+  confettiCtx.scale(dpr,dpr);
+  confettiCanvas.style.display='block';
+  confettiParticles=[];
+  const W=window.innerWidth,H=window.innerHeight;
+  const count=Math.min(100,Math.floor(W/6));
+  for(let i=0;i<count;i++){
+    confettiParticles.push({
+      x:Math.random()*W,
+      y:-20-Math.random()*H*0.2,
+      vx:(Math.random()-0.5)*5,
+      vy:3+Math.random()*5,
+      size:6+Math.random()*8,
+      color:CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)],
+      rot:Math.random()*Math.PI*2,
+      vr:(Math.random()-0.5)*0.3,
+      shape:Math.random()<0.5?'rect':'circle',
+      life:1
+    });
+  }
+  confettiStart=Date.now();
+  animateConfetti();
+}
+function animateConfetti(){
+  if(!confettiCtx)return;
+  const W=window.innerWidth,H=window.innerHeight;
+  confettiCtx.clearRect(0,0,W,H);
+  const elapsed=Date.now()-confettiStart;
+  let alive=0;
+  confettiParticles.forEach(p=>{
+    if(elapsed>500)p.life-=0.04;
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vy+=0.08;
+    p.rot+=p.vr;
+    if(p.y>H+30)p.y=-20;
+    if(p.life>0){
+      alive++;
+      confettiCtx.save();
+      confettiCtx.translate(p.x,p.y);
+      confettiCtx.rotate(p.rot);
+      confettiCtx.globalAlpha=Math.max(0,p.life);
+      confettiCtx.fillStyle=p.color;
+      if(p.shape==='rect'){
+        confettiCtx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      }else{
+        confettiCtx.beginPath();
+        confettiCtx.arc(0,0,p.size/2,0,Math.PI*2);
+        confettiCtx.fill();
+      }
+      confettiCtx.restore();
+    }
+  });
+  if(alive>0){
+    confettiRAF=requestAnimationFrame(animateConfetti);
+  }else{
+    confettiCanvas.style.display='none';
+    confettiRAF=null;
+  }
+}
+window.addEventListener('resize',function(){
+  if(confettiCanvas&&confettiCanvas.style.display!=='none'){
+    const dpr=window.devicePixelRatio||1;
+    confettiCanvas.width=window.innerWidth*dpr;
+    confettiCanvas.height=window.innerHeight*dpr;
+    confettiCtx.setTransform(1,0,0,1,0,0);
+    confettiCtx.scale(dpr,dpr);
+  }
+});
+
+function submitQuiz(force){
+try{
+const s=quiz.set,t=s.questions.length,a=Object.keys(quiz.answers).length;
+if(a<t&&!confirm(a+' টি প্রশ্ন বাকি আছে। '+(t-a)+' টি উত্তর দেওয়া হয়নি। তবুও সাবমিট করবেন?'))return;
+const c=Object.keys(quiz.answers).filter(k=>quiz.answers[k]===quiz.set.questions[parseInt(k)].answer).length;
+const p=t>0?Math.round((c/t)*100):0;
+quiz.showResults=true;
+quiz.result={correct:c,total:t,percentage:p,date:new Date().toISOString(),name:quiz.set.title||quiz.set.type};
+if(quiz.pageId==='mocktest'){
+progress.mock_tests=progress.mock_tests||[];
+progress.mock_tests.push(quiz.result);
+saveProgress(progress);
+}else if(quiz.pageId==='practice'){
+progress.practice_done=progress.practice_done||{};
+progress.practice_done[quiz.setId||quiz.set.title]=quiz.result;
+saveProgress(progress);
+}
+showConfetti();
+let rh=`
+<div class="card"><div class="quiz-result"><div class="score">${c}/${t}</div><div style="color:var(--gray);font-size:1.1rem">${p}%</div></div>
+<div class="result-grid"><div class="r-box correct"><div class="r-num">${c}</div><div class="r-label">সঠিক</div></div>
+<div class="r-box wrong"><div class="r-num">${t-c}</div><div class="r-label">ভুল</div></div>
+<div class="r-box total"><div class="r-num">${t}</div><div class="r-label">মোট</div></div></div>
+${p>=80?'<div class="info-box" style="background:rgba(0,176,155,0.1);color:#00b09b;text-align:center;padding:12px;border-radius:10px;margin-top:12px">🎉 চমৎকার! আপনি ৮০% এর বেশি পেয়েছেন!</div>':''}
+<div style="display:flex;gap:8px;margin-top:16px">
+<button class="btn" style="flex:1" onclick="backFromQuiz()">ফিরে যান</button>
+<button class="btn btn-primary" style="flex:1" onclick="reviewQuiz()">উত্তর পর্যালোচনা</button>
+</div></div>`;
+document.getElementById(quiz.pageId).innerHTML=rh;
+}catch(err){console.error('Submit error:',err);alert('সাবমিট করতে সমস্যা: '+err.message)}
+}
+
+function reviewQuiz(){quiz.showResults=true;quiz.currentQ=0;renderQuiz(quiz.pageId)}
+function backFromQuiz(){const pid=quiz?quiz.pageId:null;quiz=null;if(pid){const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};if(loaders[pid])loaders[pid]()}else{const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};const active=document.querySelector('.page.active')?.id;if(loaders[active])loaders[active]()}}
+// REPORT
+function loadReport(){
+let sh='<table class="report-table"><tr><th>বিষয়</th><th>অধ্যায়</th><th>সম্পন্ন</th><th>%</th></tr>';
+STUDY_DATA.forEach(v=>{const t=v.chapters.length;let r=0;v.chapters.forEach(c=>{if(progress.chapters_read[v.volume+'|'+c.title])r++});const p=t>0?Math.round((r/t)*100):0;sh+=`<tr><td>${esc(v.subject)}</td><td>${t}</td><td>${r}</td><td><strong>${p}%</strong></td></tr>`});
+sh+='</table>';
+let th='<table class="report-table"><tr><th>তারিখ</th><th>টেস্ট</th><th>স্কোর</th><th>%</th></tr>';
+const all=[];(progress.mock_tests||[]).forEach(t=>all.push(t));Object.values(progress.practice_done||{}).forEach(t=>all.push(t));
+all.sort((a,b)=>new Date(b.date)-new Date(a.date));
+if(all.length===0)th+='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--gray)">এখনও কোনো টেস্ট দেওয়া হয়নি</td></tr>';
+all.forEach(t=>{th+=`<tr><td>${new Date(t.date).toLocaleDateString('bn-BD')}</td><td>${esc(t.name||'')}</td><td>${t.correct||0}/${t.total||0}</td><td><strong>${t.percentage||0}%</strong></td></tr>`});
+th+='</table>';
+// Day targets
+let dp=0,dt=0;for(let m=1;m<=6;m++){for(let d=1;d<=30;d++){const k='m'+m+'_d'+d;dt++;if(progress.day_targets[k])dp++}}
+const pp=dt>0?Math.round((dp/dt)*100):0;
+let html=`<div class="card"><h2>📊 প্রগ্রেস রিপোর্ট</h2><div class="info-box">🔒 আপনার সমস্ত প্রগ্রেস নিরাপদে সেভ করা আছে। রিফ্রেশ বা বন্ধ করলেও কিছু মুছবে না।</div><h3>📅 প্ল্যান প্রগ্রেস</h3><div class="progress-bar" style="height:20px"><div class="progress-fill grad4" style="width:${pp}%">${pp}% (${dp}/${dt} দিন)</div></div></div><div class="card"><h3>📖 পড়াশোনার অগ্রগতি</h3>${sh}</div><div class="card"><h3>📝 টেস্ট ইতিহাস (${all.length})</h3>${th}</div>`;
+html+=`<div class="card"><h3>💾 ব্যাকআপ</h3><p>আপনার প্রগ্রেস ব্যাকআপ করুন:</p><button class="btn btn-primary" onclick="exportData()" style="margin-top:8px">📥 ব্যাকআপ ডাউনলোড</button><button class="btn btn-success" onclick="document.getElementById('imp').click()" style="margin-top:8px;margin-left:8px">📤 রিস্টোর করুন</button><input type="file" id="imp" style="display:none" accept=".json" onchange="importData(event)"></div>`;
+document.getElementById('report').innerHTML=html;
+}
+function exportData(){const d={progress,history,exportDate:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='panchayat_backup_'+new Date().toISOString().split('T')[0]+'.json';a.click();URL.revokeObjectURL(u)}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);if(d.progress){Object.keys(d.progress.chapters_read||{}).forEach(k=>{if(!progress.chapters_read[k])progress.chapters_read[k]=d.progress.chapters_read[k]});Object.keys(d.progress.practice_done||{}).forEach(k=>{if(!progress.practice_done[k])progress.practice_done[k]=d.progress.practice_done[k]});if(d.progress.mock_tests)progress.mock_tests=[...(progress.mock_tests||[]),...d.progress.mock_tests];Object.keys(d.progress.day_targets||{}).forEach(k=>{if(!progress.day_targets[k])progress.day_targets[k]=d.progress.day_targets[k]});saveProgress(progress)}if(d.history){history=[...history,...d.history];saveHistory(history)}alert('ব্যাকআপ সফলভাবে রিস্টোর করা হয়েছে!');loadReport()}catch(err){alert('ত্রুটি: '+err.message)}};r.readAsText(f)}
+// INIT
+window.addEventListener('beforeunload',function(){
+  if(currentUser){saveUserData(currentUser.email)}
+});
+// Run auth check and data loading in parallel
+checkAuthState();
+loadData();
+loadData();
+</script>
+<div style='text-align:center;padding:12px;color:rgba(255,255,255,0.5);font-size:.8rem'>\n&copy; 2026 পঞ্চায়েত প্রস্তুতি | সর্বস্বত্ব সংরক্ষিত<br>\nDeveloped by @Champ\n</div>\n</body></html>
