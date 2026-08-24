@@ -10,7 +10,19 @@ try {
   const mcqsStart=html.indexOf('const SUBJECT_MCQS=');
   const mcqsEnd=html.indexOf('];',mcqsStart);
   if(mcqsStart===-1||mcqsEnd===-1)throw new Error('SUBJECT_MCQS not found');
-  const newMcqs=[].concat(JSON.parse(fs.readFileSync('new_mcqs_part1.json','utf8')),JSON.parse(fs.readFileSync('new_mcqs_part2.json','utf8')),JSON.parse(fs.readFileSync('new_mcqs_part3.json','utf8')));
+  
+  // Read TSV files and convert to MCQ objects
+  const tsvParts=[];
+  for(let i=1;i<=4;i++){
+    try{tsvParts.push(fs.readFileSync('mcqs_tsv_part'+i+'.txt','utf8'))}catch(e){}
+  }
+  const tsv=tsvParts.join('\n');
+  const lines=tsv.split('\n').filter(l=>l.trim());
+  const newMcqs=lines.map(line=>{
+    const [category,subsubject,question,optA,optB,optC,optD,answer]=line.split('\t');
+    return {category,subsubject,question,options:{A:optA,B:optB,C:optC,D:optD},answer};
+  });
+  
   const newMcqsJs=newMcqs.map(m=>JSON.stringify(m)).join(',');
   html=html.substring(0,mcqsEnd)+','+newMcqsJs+html.substring(mcqsEnd);
   changes.push('Added '+newMcqs.length+' new MCQs to SUBJECT_MCQS');
