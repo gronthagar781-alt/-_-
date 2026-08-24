@@ -193,26 +193,7 @@ body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backg
 </head>
 <body>
 
-<div id="diag" style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#000;color:#0f0;font-size:10px;padding:4px;font-family:monospace;white-space:pre;max-height:200px;overflow:auto">JS loading...</div>
-<script>
-// Diagnostic script - runs first
-var _diag = document.getElementById('diag');
-function _log(msg){
-  if(_diag) _diag.textContent += '\n' + msg;
-  console.log('[DIAG]', msg);
-}
-_log('Inline JS running');
-_log('window.supabase: ' + (typeof window.supabase));
-if(typeof window.supabase !== 'undefined' && window.supabase.createClient){
-  _log('createClient available');
-} else {
-  _log('ERROR: createClient NOT available');
-}
-// Hide diagnostic after 10s
-setTimeout(function(){
-  if(_diag) _diag.style.display = 'none';
-}, 10000);
-</script>
+
 
 <div id="auth-overlay">
   <div class="auth-card" id="auth-card">
@@ -1043,15 +1024,15 @@ function openChapter(vi,ci){
 const v=STUDY_DATA[vi],c=v.chapters[ci];const k=v.volume+'|'+c.title;const done=progress.chapters_read[k];
 const _qc=SUBJECT_MCQS.filter(m=>m.category===v.subject&&(m.subsubject||'')===c.title).length;
 let html=`
-<button class="btn btn-back" onclick="renderStudySubjects()">» न(*�
-z
-h.
-k�؝]ۏ��]ۈ�\��H�����\�XY�ۘ�X��H�X\�ԙXY
-	ݚ_K	��_JJH��[OH�X\��[�[Y�����ۙO�˸� H88)�)��)��#�Ɏ�r�cat':'✎ঞ ড়াড়াড়��ৈ্'}</button>${_q3>0?`<button class="btn btn-primary" onclick="startSubSubjectQuiz('${v.subject.replace(/'/g,"\\'")}','${c.title.replace(/'/g,"\\'")}')""7G��S�&�&v����VgC���#�(��
-h.
-i��n
-h�('*�6B�G��7ғ��'WGF����rw��F�b6�73�&6&B"7G��S�&�&v���F��'�#�ƃ#�G�W62�2�F�F�R�����#��7G��S�&6���#�f"��w&����&v���&�GF�ӣ'�#�G�W62�b�7V&�V7B������F�b6�73�'7GVG��6��FV�B#�G�W62�2�6��FV�B����F�c���F�c� ���F�7V�V�B�vWDV�V�V�D'��B�w7GVG�r����W$�D��ևF�ð�
-function markRead(vi,ci){const v=STUDY_DATA[vi],c=v.chapters[ci],k=v.volume+'|'+c.title;progress.chapters_read[k]=!progress.chapters_read[k];saveProgress(progress);if(progress.chapters_read[k]){addHistory('study',`${v.subject} - ${c.title}`,'সম্পন্ন');showConfetti()}renderStudySubjects()}
+<button class="btn btn-back" onclick="renderStudySubjects()">← বিষয়সমূহ</button>
+<h3 id="chapter-title"></h3>
+<div id="chapter-content" class="chapter-content"></div>
+${_qc>0?'<button class="btn btn-primary" style="margin-top:12px" onclick="startSubjectQuiz()">কুইজ শুরু করুন ('+_qc+' প্রশ্ন)</button>':''}
+`;
+
+
+
+function markRead(vi,ci){const v=STUDY_DATA[vi],c=v.chapters[ci],k=v.volume+'|'+c.title;progress.chapters_read[k]=!progress.chapters_read[k];saveProgress(progress);if(progress.chapters_read[k]){addHistory('study',v.subject+' - '+c.title,'সম্পন্ন');showConfetti()}renderStudySubjects()}
 function filterChapters(){const q=(document.querySelector('.search-box')?.value||'').toLowerCase();document.querySelectorAll('.subject-card').forEach((card,vi)=>{const v=STUDY_DATA[vi];if(!v)return;const m=v.chapters.some(c=>c.title.toLowerCase().includes(q));card.style.display=m||!q?'':'none'})}
 // PLAN - 180 days
 function loadPlan(){
@@ -1093,13 +1074,13 @@ function goToDayTask(vi,ci,dayNum){
 showPage('study');
 setTimeout(function(){
 var v=STUDY_DATA[vi],c=v.chapters[ci];
-var html="<button class=\\\"btn btn-primary\\\" onclick=\\\"showPage('plan')\\\">» दপযাদ৆৯</button> <button class=\\\"btn btn-success\\\" onclick=\\\"completeDayTask(\"+vi+\",\"+ci+\",\"+dayNum+\")\\\">✄�৆঒চ����&:'
-	ʵ������ѽ����)�ѵ����؁������qqp���ɑqqp����屔�qqp���ɝ���ѽ������qqp�����p���͌���ѥѱ������������屔�qqp�������مȠ��Ʌ����ɝ������ѽ������qqp��p��͌�ع�Չ���Ф������؁������qqp���Ց䵍��ѕ��qqp��r�W62�2�6��FV�B��#��F�c���F�c�#��f"�3�5T$�T5E��52�f��FW"�gV�7F���җ�&WGW&���6FVv�'����b�7V&�V7Bbb���7V'7V&�V7G��rr����2�F�F�WҒ��V�wF����b��3����F�³�#�'WGF��6�73�����&'F�'F��&��'����"7G��S����&�&v���F��'����"��6Ɩ6�����'7F'E7V%7V&�V7EV���r"�b�7V&�V7B�&W�6R��r�r�%��r"��"r�r"�2�F�F�R�&W�6R��r�r�%���"��"r����#�蚒
-i��)����
-­cat "+_qc+"঳৆পr�cat</button>"}
+var html="<button class=\"btn btn-primary\" onclick=\"showPage('plan')\">পরিকল্পনা দেখুন</button>";
+
+
+
 document.getElementById('study').innerHTML=html;
-}
 },100);
+}
 }function completeDayTask(vi,ci,dayNum){
 var v=STUDY_DATA[vi],c=v.chapters[ci];
 progress.chapters_read[vi+'|'+c.title]=true;
@@ -1151,7 +1132,7 @@ return[{month:1,title:'দিন ১-৩০',color:'#667eea',days:days.slice(0,3
 {month:6,title:'দিন ১৫১-১৮০',color:'#00f2fe',days:days.slice(150,180)}]
 }
 
-function toggleDay(m,d){const k=`m${m}_d${d}`;progress.day_targets[k]=!progress.day_targets[k];saveProgress(progress);if(progress.day_targets[k])addHistory('plan',`দিনের টার্গেট সম্পন্ন: মাস ${m}, দিন ${d}`,'সম্পন্ন');loadPlan()}
+function toggleDay(m,d){const k='m'+m+'_d'+d;progress.day_targets[k]=!progress.day_targets[k];saveProgress(progress);if(progress.day_targets[k])addHistory('plan','দিনের টার্গেট সম্পন্ন: মাস '+m+', দিন '+d,'সম্পন্ন');loadPlan()}
 function expandAllPlan(exp){document.querySelectorAll('[id^="days-"]').forEach(d=>d.style.display=exp?'block':'none')}
 // PRACTICE SETS
 function loadPractice(){
@@ -1297,12 +1278,12 @@ quiz={set,currentQ:0,answers:{},startTime:Date.now(),isMock,type,pageId,timeLimi
 renderQuiz(pageId);
 startTimer();
 }
-function startTimer(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML='»N'+m+':'+(s<10''0'):s)+'';if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
-function startQuiter(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML='»N'+m+':'+(s<10''0'):s)+'';if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
+function startTimer(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML=m+':'+(s<10?'0'+s:s);if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
+function startQuiter(){if(quiz.timerInterval)clearInterval(quiz.timerInterval);const update=h=>{if(!quiz.timeLimit)return;const el=Math.max(0,quiz.timeLimit-Math.floor((Date.now()-quiz.startTime)/1000));const m=Math.floor(el/60),s=el%60;const te=document.getElementById('quiz-timer');if(te)te.innerHTML=m+':'+(s<10?'0'+s:s);if(el<=0){clearInterval(quiz.timerInterval);quiz.timerInterval=null;submitQuiz(true)}};quiz.timerInterval=setInterval(update,1000)}
 
 function renderQuiz(pageId){
 if(!quiz)return;const s=quiz.set;const qi=quiz.currentQ;const q=s.questions[qi];if(!q)return;  
-const timerHtml=quiz.timeLimit?`<div id='quiz-timer' style='float:right;font-size:1.7eem;color:var(-sam);background:rgba(0,0,0,0.15);padding:4px 10px;border-radius:10px;margin-bottom:8px'>»B�4�F��f��"�V���F��TƖ֗B��F��f���"��FFR���r���V���7F'EF��R����r�c�r��F��f��"��F��2�F��TƖ֗BҢ�V���7F'EF��R���S�c��s���F�c��s�rs��let setInfoHtml='';
+const timerHtml=quiz.timeLimit?`<div id='quiz-timer' style='float:right;font-size:1.2rem;color:var(--p1);background:rgba(0,0,0,0.15);padding:4px 10px;border-radius:8px'></div>`:'';
 if(s.info){setInfoHtml=`<div class="info-box" style="margin-bottom:12px;font-size:.82rem">${esc(s.info)}</div>`}
 const ans=quiz.answers[qi];const showR=quiz.showResults;const ca=s.answers[q.number]||s.answers[qi+1];
 let oh='';
@@ -1408,17 +1389,35 @@ window.addEventListener('resize',function(){
 function submitQuiz(force){
 try{
 const s=quiz.set,t=s.questions.length,a=Object.keys(quiz.answers).length;
-if(a<t&&!confirm(`{a}'ঋডযতা${t-a}ঘ�*�m�◸��ۋ�7�~
-i�
-j
-j�
-jN
-k��&WGW&�Ц�WB3��s��6���2�VW7F���2�f�$V6���ƒ��������Մ�ͬ��핱͔����Մ���������핱͔�ܬ�����)����Ё����5�Ѡ�ɽչ���ܼ̤���������퍽��Ё���M��ɔ������퍽��Ё��5�Ѡ�ɽչ������M��ɔ�Ф�����퍽��Ё���5�Ѡ�ɽչ����є���ܠ���ե��х��Q����������if(p>=80)showConfetti();
+if(a<t&&!confirm(a+' টি প্রশ্ন বাকি আছে। '+(t-a)+' টি উত্তর দেওয়া হয়নি। তবুও সাবমিট করবেন?'))return;
+const c=Object.keys(quiz.answers).filter(k=>quiz.answers[k]===quiz.set.questions[parseInt(k)].answer).length;
+const p=t>0?Math.round((c/t)*100):0;
+quiz.showResults=true;
+quiz.result={correct:c,total:t,percentage:p,date:new Date().toISOString(),name:quiz.set.title||quiz.set.type};
+if(quiz.pageId==='mocktest'){
+progress.mock_tests=progress.mock_tests||[];
+progress.mock_tests.push(quiz.result);
+saveProgress(progress);
+}else if(quiz.pageId==='practice'){
+progress.practice_done=progress.practice_done||{};
+progress.practice_done[quiz.setId||quiz.set.title]=quiz.result;
+saveProgress(progress);
+}
+showConfetti();
 let rh=`
-<div class="card"><div class="quiz-result"><div class="score">${c}/${t}</div><div style="color:var(-gray);font-size:1.1rem">${p}%</div></div><div class="result-grid"><div class="r-box correct"><div class="num">${c}</div><div class="lbl">টু়ডু��𽑥��𽑥���؁������ȵ�����ɽ�����؁������մ������𽑥���؁�����􉱉�����/���b𽑥��𽑥���؁������ȵ����ͭ��������؁������մ����ͭ�𽑥���؁�����􉱉����j3 ���x)��)�8)*�]���]���]���[OH�X\��[��M��*8)��)�x)��)�8)���	�X]���܊GB�c�Ҳ��GBSc��F�7G&��r�"�sr������7G��S�&�&v�㣇��f��B�6��S��&VӶ6���#�f"��w&��#�(
-n(r�G��Vw��'V"r�|)��া 'িডযতন�)��8���O���]ۈ�\��H�����\�X��\��ۘ�X��H��X�ќ��T]Z^�
-H����x)�x)(পযা</button><button class="btn btn-primary" style="margin-left:8px" onclick="reviewQuiz()">⚇ে��ম�&৆ৢ�</button></div>`document.getElementById(quiz.pageId).innerHTML=rh;
-}catch(err){console.error('Submit error:',err);alert('সাবমিট করতে সমস্যা: '+err.message)}}
+<div class="card"><div class="quiz-result"><div class="score">${c}/${t}</div><div style="color:var(--gray);font-size:1.1rem">${p}%</div></div>
+<div class="result-grid"><div class="r-box correct"><div class="r-num">${c}</div><div class="r-label">সঠিক</div></div>
+<div class="r-box wrong"><div class="r-num">${t-c}</div><div class="r-label">ভুল</div></div>
+<div class="r-box total"><div class="r-num">${t}</div><div class="r-label">মোট</div></div></div>
+${p>=80?'<div class="info-box" style="background:rgba(0,176,155,0.1);color:#00b09b;text-align:center;padding:12px;border-radius:10px;margin-top:12px">🎉 চমৎকার! আপনি ৮০% এর বেশি পেয়েছেন!</div>':''}
+<div style="display:flex;gap:8px;margin-top:16px">
+<button class="btn" style="flex:1" onclick="backFromQuiz()">ফিরে যান</button>
+<button class="btn btn-primary" style="flex:1" onclick="reviewQuiz()">উত্তর পর্যালোচনা</button>
+</div></div>`;
+document.getElementById(quiz.pageId).innerHTML=rh;
+}catch(err){console.error('Submit error:',err);alert('সাবমিট করতে সমস্যা: '+err.message)}
+}
+
 function reviewQuiz(){quiz.showResults=true;quiz.currentQ=0;renderQuiz(quiz.pageId)}
 function backFromQuiz(){const pid=quiz?quiz.pageId:null;quiz=null;if(pid){const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};if(loaders[pid])loaders[pid]()}else{const loaders={practice:loadPractice,mocktest:loadMockTest,'subject-quiz':loadSubjectQuiz,pyq:loadPYQ};const active=document.querySelector('.page.active')?.id;if(loaders[active])loaders[active]()}}
 // REPORT
@@ -1433,7 +1432,7 @@ if(all.length===0)th+='<tr><td colspan="4" style="text-align:center;padding:20px
 all.forEach(t=>{th+=`<tr><td>${new Date(t.date).toLocaleDateString('bn-BD')}</td><td>${esc(t.name||'')}</td><td>${t.correct||0}/${t.total||0}</td><td><strong>${t.percentage||0}%</strong></td></tr>`});
 th+='</table>';
 // Day targets
-let dp=0,dt=0;for(let m=1;m<=6;m++){for(let d=1;d<=30;d++){const k=`m${m}_d${d}`;dt++;if(progress.day_targets[k])dp++}}
+let dp=0,dt=0;for(let m=1;m<=6;m++){for(let d=1;d<=30;d++){const k='m'+m+'_d'+d;dt++;if(progress.day_targets[k])dp++}}
 const pp=dt>0?Math.round((dp/dt)*100):0;
 let html=`<div class="card"><h2>📊 প্রগ্রেস রিপোর্ট</h2><div class="info-box">🔒 আপনার সমস্ত প্রগ্রেস নিরাপদে সেভ করা আছে। রিফ্রেশ বা বন্ধ করলেও কিছু মুছবে না।</div><h3>📅 প্ল্যান প্রগ্রেস</h3><div class="progress-bar" style="height:20px"><div class="progress-fill grad4" style="width:${pp}%">${pp}% (${dp}/${dt} দিন)</div></div></div><div class="card"><h3>📖 পড়াশোনার অগ্রগতি</h3>${sh}</div><div class="card"><h3>📝 টেস্ট ইতিহাস (${all.length})</h3>${th}</div>`;
 html+=`<div class="card"><h3>💾 ব্যাকআপ</h3><p>আপনার প্রগ্রেস ব্যাকআপ করুন:</p><button class="btn btn-primary" onclick="exportData()" style="margin-top:8px">📥 ব্যাকআপ ডাউনলোড</button><button class="btn btn-success" onclick="document.getElementById('imp').click()" style="margin-top:8px;margin-left:8px">📤 রিস্টোর করুন</button><input type="file" id="imp" style="display:none" accept=".json" onchange="importData(event)"></div>`;
