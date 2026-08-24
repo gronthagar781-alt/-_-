@@ -1,8 +1,8 @@
 const fs=require('fs');
+const zlib=require('zlib');
 let html=fs.readFileSync('index.html','utf8');
 let changes=[];
 
-// Decode helper
 function d(s){return Buffer.from(s,'base64').toString('utf8')}
 
 // === PATCH 1: Add new MCQs to SUBJECT_MCQS ===
@@ -11,17 +11,13 @@ try {
   const mcqsEnd=html.indexOf('];',mcqsStart);
   if(mcqsStart===-1||mcqsEnd===-1)throw new Error('SUBJECT_MCQS not found');
   
-  // Read TSV files and convert to MCQ objects
-  const tsvParts=[];
-  for(let i=1;i<=4;i++){
-    try{tsvParts.push(fs.readFileSync('mcqs_tsv_part'+i+'.txt','utf8'))}catch(e){}
+  // Read gzip base64 parts, concatenate, decode, decompress
+  let b64='';
+  for(let i=1;i<=3;i++){
+    try{b64+=fs.readFileSync('mcqs_gz_b64_part'+i+'.txt','utf8').trim()}catch(e){}
   }
-  const tsv=tsvParts.join('\n');
-  const lines=tsv.split('\n').filter(l=>l.trim());
-  const newMcqs=lines.map(line=>{
-    const [category,subsubject,question,optA,optB,optC,optD,answer]=line.split('\t');
-    return {category,subsubject,question,options:{A:optA,B:optB,C:optC,D:optD},answer};
-  });
+  const decompressed=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
+  const newMcqs=JSON.parse(decompressed);
   
   const newMcqsJs=newMcqs.map(m=>JSON.stringify(m)).join(',');
   html=html.substring(0,mcqsEnd)+','+newMcqsJs+html.substring(mcqsEnd);
