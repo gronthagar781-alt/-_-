@@ -598,7 +598,7 @@ async function loadData(){
       window._pendingPage=null;
     }
   }catch(err){
-    console.error('Data load error:', err);
+    console.error('Data load error:', err); alert('ডেটা লোড ব্যর্থ: '+err.message+'। পেজ রিফ্রেশ করুন।');
     hideLoadingSpinner();
     // Show retry option instead of blocking alert
     let r=document.getElementById('data-retry');
@@ -684,6 +684,10 @@ function cleanQ(t){if(!t)return'';return t.replace(/\s+/g,' ').trim()}
 function addHistory(type,title,details){history.push({type,title,details,timestamp:new Date().toISOString()});if(history.length>1000)history=history.slice(-1000);saveHistory(history)}
 // DASHBOARD
 function loadDashboard(){
+if(!DATA_LOADED||!STUDY_DATA||STUDY_DATA.length===0){
+document.getElementById('dashboard').innerHTML='<div class="card" style="text-align:center;padding:40px 20px"><h2>📊 ড্যাশবোর্ড</h2><p style="color:var(--gray);margin-top:12px">ডেটা লোড হচ্ছে... অপেক্ষা করুন।</p><p style="color:var(--gray);font-size:0.8rem;margin-top:8px">যদি দেখা না যায় তবে পেজ রিফ্রেশ করুন।</p></div>';
+return;
+}
 let tc=0,rc=0;STUDY_DATA.forEach(v=>v.chapters.forEach(c=>{tc++;const k=v.volume+'|'+c.title;if(progress.chapters_read[k])rc++}));
 const mt=progress.mock_tests||[];const tq=mt.reduce((s,t)=>s+(t.total||0),0)+Object.keys(progress.practice_done||{}).reduce((s,k)=>s+(progress.practice_done[k]?.total||0),0);
 const avg=mt.length>0?Math.round(mt.reduce((s,t)=>s+(t.percentage||0),0)/mt.length):0;
