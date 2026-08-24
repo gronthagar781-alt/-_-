@@ -1,83 +1,58 @@
-// Patch script v6: clean up header/nav — remove duplicate code, merge header into nav, simplify
-const fs = require('fs');
-const path = require('path');
+const fs=require('fs');
+let html=fs.readFileSync('index.html','utf8');
+let changes=[];
 
-const indexPath = path.join(process.cwd(), 'index.html');
-let src = fs.readFileSync(indexPath, 'utf-8');
-let changed = false;
+// Decode helper
+function d(s){return Buffer.from(s,'base64').toString('utf8')}
 
-// ===== FIX 1: Remove the subtitle line from header =====
-const oldHeader = `<div class="header">
-<h1><span class="icon">\u{1F3DB}\uFE0F</span> \u0997\u09cd\u09b0\u09be\u09ae \u09aa\u099e\u09cd\u099a\u09be\u09af\u09bc\u09c7\u09a4 \u09aa\u09b0\u09c0\u0995\u09cd\u09b7\u09be - \u09b8\u09ae\u09cd\u09aa\u09c2\u09b0\u09cd\u09a3 \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09c1\u09a4\u09bf</h1>
-<p>\u09aa\u099e\u09cd\u099a\u09be\u09af\u09bc\u09c7\u09a4 \u09ac\u09cd\u09af\u09ac\u09b8\u09cd\u09a5\u09be \u2022 \u09ac\u09be\u0982\u09b2\u09be \u2022 English \u2022 \u0997\u09a3\u09bf\u09a4 \u2022 \u09b8\u09be\u09a7\u09be\u09b0\u09a3 \u099c\u09cd\u099e\u09be\u09a8 \u2022 \u09ae\u0995 \u099f\u09c7\u09b8\u09cd\u099f</p>
-</div>`;
+// === PATCH 1: Add new MCQs to SUBJECT_MCQS ===
+try {
+  const mcqsStart=html.indexOf('const SUBJECT_MCQS=');
+  const mcqsEnd=html.indexOf('];',mcqsStart);
+  if(mcqsStart===-1||mcqsEnd===-1)throw new Error('SUBJECT_MCQS not found');
+  const newMcqs=JSON.parse(fs.readFileSync('new_mcqs.json','utf8'));
+  const newMcqsJs=newMcqs.map(m=>JSON.stringify(m)).join(',');
+  html=html.substring(0,mcqsEnd)+','+newMcqsJs+html.substring(mcqsEnd);
+  changes.push('Added '+newMcqs.length+' new MCQs to SUBJECT_MCQS');
+} catch(e) { console.error('PATCH 1 failed:',e.message); }
 
-const newHeader = `<div class="header">
-<h1><span class="icon">\u{1F3DB}\uFE0F</span> \u0997\u09cd\u09b0\u09be\u09ae \u09aa\u099e\u09cd\u099a\u09be\u09af\u09bc\u09c7\u09a4 \u09aa\u09b0\u09c0\u0995\u09cd\u09b7\u09be</h1>
-</div>`;
+// === PATCH 2: Remove duplicate startSubjectQuiz ===
+try {
+  const oldSq1=d('ZnVuY3Rpb24gc3RhcnRTdWJqZWN0UXVpeihjYXQpewpjb25zdCBxcz1TVUJKRUNUX01DUVMuZmlsdGVyKG09Pm0uY2F0ZWdvcnk9PT1jYXQpOwpjb25zdCBxc2k9cXMubWFwKChtLGkpPT4oe251bWJlcjppKzEscXVlc3Rpb246bS5xdWVzdGlvbixvcHRpb25zOm0ub3B0aW9uc30pKTsKY29uc3QgYW5zd2Vycz17fTtxcy5mb3JFYWNoKChtLGkpPT57YW5zd2Vyc1tpKzFdPW0uYW5zd2VyfSk7CnN0YXJ0UXVpekVuZ2luZSh7dGl0bGU6Y2F0Kycg4KaV4KeB4KaH4KacJyxxdWVzdGlvbnM6cXNpLGFuc3dlcnM6YW5zd2VycyxleHBsYW5hdGlvbnM6e319LCdzdWJqZWN0LXF1aXonLHRydWUpCn0=');
+  if(html.includes(oldSq1)) {
+    const sq2Check=html.substring(html.indexOf(oldSq1)+oldSq1.length);
+    if(sq2Check.includes('function startSubjectQuiz(cat){')) {
+      html=html.replace(oldSq1+'\n','');
+      changes.push('Removed duplicate startSubjectQuiz function');
+    }
+  }
+} catch(e) { console.error('PATCH 2 failed:',e.message); }
 
-if (src.includes(oldHeader)) {
-  src = src.replace(oldHeader, newHeader);
-  changed = true;
-  console.log('OK: Header simplified');
-} else { console.log('SKIP: header not found'); }
+// === PATCH 3: Replace openChapter with quiz link ===
+try {
+  const oldOc=d('ZnVuY3Rpb24gb3BlbkNoYXB0ZXIodmksY2kpewpjb25zdCB2PVNUVURZX0RBVEFbdmldLGM9di5jaGFwdGVyc1tjaV07Y29uc3Qgaz12LnZvbHVtZSsnfCcrYy50aXRsZTtjb25zdCBkb25lPXByb2dyZXNzLmNoYXB0ZXJzX3JlYWRba107CmxldCBodG1sPWAKPGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1iYWNrIiBvbmNsaWNrPSJyZW5kZXJTdHVkeVN1YmplY3RzKCkiPsK7IOKYo+KSuCDgpqbgp4bgp6/gpqTgpr4KPC9idXR0b24+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1yZWFkIiBvbmNsaWNrPSJtYXJrUmVhZCgke3ZpfSwke2NpfSkiIHN0eWxlPSJtYXJnaW4tbGVmdDo4cHgiPiR7ZG9uZT8n4pCBIODgp4bgppLgpprgj4bnJzonCgnKtY2F0Jzon4pyO4KaeIOCnnOCmv+CnnOCmvuCnnOCn9OCniOCnjSd9PC9idXR0b24+PGRpdiBjbGFzcz0iY2FyZCIgc3R5bGU9Im1hcmdpbi10b3A6MTJweCI+PGgyPiR7ZXNjKGMudGl0bGUpfTwvaDI+PHAgc3R5bGU9ImNvbG9yOnZhcigtZ3JheSk7bWFyZ2luLWJvdHRvbToxMnB4Ij4ke2VzYyh2LnN1YmplY3QpfTwvcD48ZGl2IGNsYXNzPSJzdHVkeS1jb250ZW50Ij4ke2VzYyhjLmNvbnRlbnQpfTwvZGl2PjwvZGl2PmAKOwpkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnc3R1ZHknKS5pbm5lckhUTUw9aHRtbDsKfQ==');
+  const newOc=d('ZnVuY3Rpb24gb3BlbkNoYXB0ZXIodmksY2kpewpjb25zdCB2PVNUVURZX0RBVEFbdmldLGM9di5jaGFwdGVyc1tjaV07Y29uc3Qgaz12LnZvbHVtZSsnfCcrYy50aXRsZTtjb25zdCBkb25lPXByb2dyZXNzLmNoYXB0ZXJzX3JlYWRba107CmNvbnN0IF9xYz1TVUJKRUNUX01DUy5maWx0ZXIobT0+bS5jYXRlZ29yeT09PXYuc3ViamVjdCYmKG0uc3Vic3ViamVjdHx8JycpPT09Yy50aXRsZSkubGVuZ3RoOwpsZXQgaHRtbD1gCjxidXR0b24gY2xhc3M9ImJ0biBidG4tYmFjayIgb25jbGljaz0icmVuZGVyU3R1ZHlTdWJqZWN0cygpIj7CuyDigqTigqrgp6DgpoLgpr4g4Kam4KeG4Kev4Kak4Ka+PC9idXR0b24+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1yZWFkIiBvbmNsaWNrPSJtYXJrUmVhZCgke3ZpfSwke2NpfSkiIHN0eWxlPSJtYXJnaW4tbGVmdDo4cHgiPiR7ZG9uZT8n4pCBIODgp4bgppLgpprgj4bnJzonCgnKtY2F0Jzon4pyO4KaeIOCnnOCmvuCnnOCmvuCnnOCn9OCniOCnjSd9PC9idXR0b24+JHtfcWM+MD9gPGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1wcmltYXJ5IiBvbmNsaWNrPSJzdGFydFN1YlN1YmplY3RRdWl6KCcke3Yuc3ViamVjdC5yZXBsYWNlKC8nL2csIlxcJyIpfScsJyR7Yy50aXRsZS5yZXBsYWNlKC8nL2csIlxcJyIpfScpIiIHN0eWxlPSJtYXJnaW4tbGVmdDo4cHgiPuKJqSDgpoLgpprgj4bgponCgnKtY2F0ICgke19xY30pPC9idXR0b24+YDonJ308ZGl2IGNsYXNzPSJjYXJkIiBzdHlsZT0ibWFyZ2luLXRvcDoxMnB4Ij48aDI+JHtlc2MoYy50aXRsZSl9PC9oMj48cCBzdHlsZT0iY29sb3I6dmFyKC1ncmF5KTttYXJnaW4tYm90dG9tOjEycHgiPiR7ZXNjKHYuc3ViamVjdCl9PC9wPjxkaXYgY2xhc3M9InN0dWR5LWNvbnRlbnQiPiR7ZXNjKGMuY29udGVudCl9PC9kaXY+PC9kaXY+YAo7CmRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzdHVkeScpLmlubmVySFRNTD1odG1sOwp9');
+  if(html.includes(oldOc)) {
+    html=html.replace(oldOc,newOc);
+    changes.push('Added quiz link to openChapter');
+  } else {
+    console.log('openChapter pattern not found');
+  }
+} catch(e) { console.error('PATCH 3 failed:',e.message); }
 
-// ===== FIX 2: Make header more compact =====
-const oldHeaderCSS = ".header{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;padding:20px;text-align:center;position:sticky;top:0;z-index:1000;box-shadow:0 4px 30px rgba(0,0,0,0.3);backdrop-filter:blur(10px)}";
-const newHeaderCSS = ".header{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;padding:10px 16px;text-align:center;position:sticky;top:0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.25);backdrop-filter:blur(10px)}";
-if (src.includes(oldHeaderCSS)) { src = src.replace(oldHeaderCSS, newHeaderCSS); changed = true; console.log('OK: Header compact'); }
-else { console.log('SKIP: header CSS not found'); }
+// === PATCH 4: Replace goToDayTask with quiz link ===
+try {
+  const oldGtd=d('ZnVuY3Rpb24gZ29Ub0RheVRhc2sodmksY2ksZGF5TnVtKXsKc2hvd1BhZ2UoJ3N0dWR5Jyk7CnNldFRpbWVvdXQoZnVuY3Rpb24oKXsKdmFyIHY9U1RVRFlfREFUQVt2aV0sYz12LmNoYXB0ZXJzW2NpXTsKdmFyIGh0bWw9IjxidXR0b24gY2xhc3M9XFxcImJ0biBidG4tcHJpbWFyeVxcXCIgb25jbGljaz1cXFwic2hvd1BhZ2UoJ3BsYW4nKVxcXCI+wrsg4KSm4Kaq4Kav4Ka+4Kam4KeG4KevPC9idXR0b24+IDxidXR0b24gY2xhc3M9XFxcImJ0biBidG4tc3VjY2Vzc1xcXCIgb25jbGljaz1cXFwiY29tcGxldGVEYXlUYXNrKFwiK3ZpK1wiLFwiK2NpK1wiLFwiK2RheU51bStcIilcXFwiPuKchODgp4bgppLgpprgj4bnJzonCgnKtY2F0PC9idXR0b24+IjsKaHRtbCs9IjxkaXYgY2xhc3M9XFxcImNhcmRcXFwiIHN0eWxlPVxcXCJtYXJnaW4tdG9wOjEycHhcXFwiPjxoMj5cIitlc2MoYy50aXRsZSkrIjwvaDI+PHAgc3R5bGU9XFxcImNvbG9yOnZhcigtZ3JheSk7bWFyZ2luLWJvdHRvbToxMnB4XFxcIj5cIitlc2Modi5zdWJqZWN0KysiIjwvcD48ZGl2IGNsYXNzPVxcXCJzdHVkeS1jb250ZW50XFxcIj5cIitlc2MoYy5jb250ZW50KysiPC9kaXY+PC9kaXY+IjsKZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3N0dWR5JykuaW5uZXJIVE1MPWh0bWw7Cn0KfQ==');
+  const newGtd=d('ZnVuY3Rpb24gZ29Ub0RheVRhc2sodmksY2ksZGF5TnVtKXsKc2hvd1BhZ2UoJ3N0dWR5Jyk7CnNldFRpbWVvdXQoZnVuY3Rpb24oKXsKdmFyIHY9U1RVRFlfREFUQVt2aV0sYz12LmNoYXB0ZXJzW2NpXTsKdmFyIGh0bWw9IjxidXR0b24gY2xhc3M9XFxcImJ0biBidG4tcHJpbWFyeVxcXCIgb25jbGljaz1cXFwic2hvd1BhZ2UoJ3BsYW4nKVxcXCI+wrsg4KSm4Kaq4Kav4Ka+4Kam4KeG4KevPC9idXR0b24+IDxidXR0b24gY2xhc3M9XFxcImJ0biBidG4tc3VjY2Vzc1xcXCIgb25jbGljaz1cXFwiY29tcGxldGVEYXlUYXNrKFwiK3ZpK1wiLFwiK2NpK1wiLFwiK2RheU51bStcIilcXFwiPuKchODgp4bgppLgpprgj4bnJzonCgnKtY2F0PC9idXR0b24+IjsKaHRtbCs9IjxkaXYgY2xhc3M9XFxcImNhcmRcXFwiIHN0eWxlPVxcXCJtYXJnaW4tdG9wOjEycHhcXFwiPjxoMj5cIitlc2MoYy50aXRsZSkrIjwvaDI+PHAgc3R5bGU9XFxcImNvbG9yOnZhcigtZ3JheSk7bWFyZ2luLWJvdHRvbToxMnB4XFxcIj5cIitlc2Modi5zdWJqZWN0KysiIjwvcD48ZGl2IGNsYXNzPVxcXCJzdHVkeS1jb250ZW50XFxcIj5cIitlc2MoYy5jb250ZW50KysiPC9kaXY+PC9kaXY+IjsKdmFyIF9xYz1TVUJKRUNUX01DUy5maWx0ZXIoZnVuY3Rpb24obSl7cmV0dXJuIG0uY2F0ZWdvcnk9PT12LnN1YmplY3QmJihtLnN1YnN1YmplY3R8fCcnKT09PWMudGl0bGV9KS5sZW5ndGg7CmlmKF9xYz4wKXtodG1sKz0iPGJ1dHRvbiBjbGFzcz1cXFwiYnRuIGJ0bi1wcmltYXJ5XFxcIiBzdHlsZT1cXFwibWFyZ2luLXRvcDoxMnB4XFxcIiBvbmNsaWNrPVxcXCJzdGFydFN1YlN1YmplY3RRdWl6KCciK3Yuc3ViamVjdC5yZXBsYWNlKC8nL2csIlxcJyIpKyInLCciK2MudGl0bGUucmVwbGFjZSgvJy9nLCJcXCciKSsiJylcXFwiPuKJqSDgpoLgpprgj4bgponCgnKtY2F0ICIrX3FjKyLgprPgp4bgpqrCgnKtY2F0PC9idXR0b24+In0KZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3N0dWR5JykuaW5uZXJIVE1MPWh0bWw7Cn0KfQ==');
+  if(html.includes(oldGtd)) {
+    html=html.replace(oldGtd,newGtd);
+    changes.push('Added quiz link to goToDayTask');
+  } else {
+    console.log('goToDayTask pattern not found');
+  }
+} catch(e) { console.error('PATCH 4 failed:',e.message); }
 
-// ===== FIX 3: Nav — horizontally scrollable, no wrap =====
-const oldNavCSS = ".nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:12px;background:rgba(15,12,41,0.8);backdrop-filter:blur(10px);position:sticky;top:60px;z-index:999;border-bottom:1px solid var(--border)}";
-const newNavCSS = ".nav{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 12px;background:rgba(15,12,41,0.9);backdrop-filter:blur(10px);position:sticky;top:46px;z-index:999;border-bottom:1px solid var(--border);-webkit-overflow-scrolling:touch;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}";
-if (src.includes(oldNavCSS)) { src = src.replace(oldNavCSS, newNavCSS); changed = true; console.log('OK: Nav scrollable'); }
-else { console.log('SKIP: nav CSS not found'); }
-
-// ===== FIX 4: Mobile nav offset =====
-const oldMediaNav = ".nav{top:55px}";
-const newMediaNav = ".nav{top:42px}";
-if (src.includes(oldMediaNav)) { src = src.replace(oldMediaNav, newMediaNav); changed = true; console.log('OK: Nav mobile offset'); }
-else { console.log('SKIP: media nav not found'); }
-
-// ===== FIX 5: Header h1 compact =====
-const oldH1CSS = ".header h1{font-size:1.4rem;}";
-const newH1CSS = ".header h1{font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}";
-if (src.includes(oldH1CSS)) { src = src.replace(oldH1CSS, newH1CSS); changed = true; console.log('OK: h1 compact'); }
-else { console.log('SKIP: h1 CSS not found'); }
-
-// ===== FIX 6: Hide header p =====
-const oldHeaderPCSS = ".header p{font-size:0.8rem;opacity:0.85;margin-top:4px}";
-if (src.includes(oldHeaderPCSS)) { src = src.replace(oldHeaderPCSS, ".header p{display:none}"); changed = true; console.log('OK: header p hidden'); }
-else { console.log('SKIP: header p CSS not found'); }
-
-// ===== FIX 7: Mobile header h1 =====
-const oldMediaH1 = ".header h1{font-size:1.05rem}";
-const newMediaH1 = ".header h1{font-size:0.95rem}";
-if (src.includes(oldMediaH1)) { src = src.replace(oldMediaH1, newMediaH1); changed = true; console.log('OK: mobile h1'); }
-else { console.log('SKIP: media h1 not found'); }
-
-// ===== FIX 8: Nav buttons compact =====
-const oldNavBtnCSS = ".nav-btn{background:rgba(255,255,255,0.08);color:#ddd;border:1px solid rgba(255,255,255,0.15);padding:8px 14px;border-radius:12px;cursor:pointer;font-size:0.8rem;transition:all 0.3s;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;touch-action:manipulation}";
-const newNavBtnCSS = ".nav-btn{background:rgba(255,255,255,0.08);color:#ddd;border:1px solid rgba(255,255,255,0.15);padding:7px 12px;border-radius:10px;cursor:pointer;font-size:0.78rem;transition:all 0.3s;font-family:inherit;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}";
-if (src.includes(oldNavBtnCSS)) { src = src.replace(oldNavBtnCSS, newNavBtnCSS); changed = true; console.log('OK: nav-btn compact'); }
-else { console.log('SKIP: nav-btn CSS not found'); }
-
-// ===== FIX 9: User bar compact =====
-const oldUserBarPos = ".auth-user-bar{position:fixed;top:0;right:0;z-index:1001;display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(102,126,234,0.9),rgba(118,75,162,0.9));backdrop-filter:blur(10px);border-bottom-left-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}";
-const newUserBarPos = ".auth-user-bar{position:fixed;top:0;right:0;z-index:1001;display:flex;align-items:center;gap:8px;padding:6px 10px;background:linear-gradient(135deg,rgba(102,126,234,0.9),rgba(118,75,162,0.9));backdrop-filter:blur(10px);border-bottom-left-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}";
-if (src.includes(oldUserBarPos)) { src = src.replace(oldUserBarPos, newUserBarPos); changed = true; console.log('OK: user bar compact'); }
-else { console.log('SKIP: user bar not found'); }
-
-// ===== FIX 10: Sync badge position =====
-const oldSyncBadge = ".auth-sync-badge{position:fixed;top:52px;right:8px;z-index:1001;background:rgba(0,176,155,0.15);color:#00b09b;padding:4px 10px;border-radius:8px;font-size:.7rem;border:1px solid rgba(0,176,155,0.2);display:none}";
-const newSyncBadge = ".auth-sync-badge{position:fixed;top:48px;right:8px;z-index:1001;background:rgba(0,176,155,0.15);color:#00b09b;padding:3px 8px;border-radius:8px;font-size:.68rem;border:1px solid rgba(0,176,155,0.2);display:none}";
-if (src.includes(oldSyncBadge)) { src = src.replace(oldSyncBadge, newSyncBadge); changed = true; console.log('OK: sync badge'); }
-else { console.log('SKIP: sync badge not found'); }
-
-if (changed) {
-  fs.writeFileSync(indexPath, src, 'utf-8');
-  console.log('\nSUCCESS: Header/nav cleanup applied.');
-} else {
-  console.log('\nNO CHANGES needed.');
-}
+// Write back
+fs.writeFileSync('index.html',html);
+console.log('Applied changes:',changes.join(', '));
+console.log('Final file size:',html.length,'bytes');
