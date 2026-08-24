@@ -536,6 +536,16 @@ function onAuthSuccess() {
   // Hide auth overlay, show app
   document.getElementById('auth-overlay').style.display = 'none';
   document.getElementById('auth-user-bar').style.display = 'flex';
+  // Load data if not already loaded, then render dashboard
+  if(!DATA_LOADED){
+    loadData().then(function(){
+      buildNav();
+      showPage('dashboard');
+    });
+  } else {
+    buildNav();
+    showPage('dashboard');
+  }
   document.getElementById('auth-user-email').textContent = '\u09b8\u09cd\u09ac\u09be\u0997\u09a4\u09ae\u09cd, ' + getFirstNameFromEmail(currentUser.email);
   // Build nav (clears old one first)
   buildNav();
@@ -571,10 +581,10 @@ async function loadData(){
   try{
     showLoadingSpinner();
     const [studyRes, qsetRes, mcqRes, caRes] = await Promise.all([
-      fetch('data_study_data.json?v=8'),
-      fetch('data_question_sets.json?v=8'),
-      fetch('data_subject_mcqs.json?v=8'),
-      fetch('data_current_affairs.json?v=8')
+      fetch('data_study_data.json'),
+      fetch('data_question_sets.json'),
+      fetch('data_subject_mcqs.json'),
+      fetch('data_current_affairs.json')
     ]);
     STUDY_DATA = await studyRes.json();
     QUESTION_SETS = await qsetRes.json();
